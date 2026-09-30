@@ -7,7 +7,18 @@ module Billing
     end
 
     def route
-      BillingRoute.find_by(house_id: @record.house_id, case_type_id: @record.case_type_id)
+      attributes = { house_id: @record.house_id, case_type_id: @record.case_type_id }
+      configured = BillingRoute.find_by(attributes)
+      return configured if configured
+
+      adapter = BillingRoute::DEFAULT_ADAPTERS[@record.case_type.key]
+      return unless adapter
+
+      BillingRoute.insert_all( # rubocop:disable Rails/SkipsModelValidations -- Preserve a concurrently configured route.
+        [attributes.merge(adapter: adapter)],
+        unique_by: :index_billing_routes_on_house_id_and_case_type_id,
+      )
+      BillingRoute.find_by!(attributes)
     end
 
     class << self

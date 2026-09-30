@@ -1207,8 +1207,10 @@ paths:
       summary: Change a Case workflow step as the resident creator
       description: Requires ownership, selected house access, a trusted Origin and a
         JSON body with step_key and expected_workflow_version from workflow.version.
-        Only closed_by_executor can confirm repair (completed without a route, otherwise
-        awaiting_recalculation) or reject it (in_progress). Other transitions return
+        Only closed_by_executor can confirm repair (awaiting_recalculation for heating,
+        hot_water, cold_water or any configured billing route; completed for other categories
+        without a route) or reject it (in_progress). Missing routes for heating and hot_water
+        default to the UK demo adapter; cold_water defaults to RKC. Existing routes take precedence. Other transitions return
         422. Stale versions return 409. No action creates another case. Use the actions
         endpoint for clarification and billing decisions.
       security:
@@ -1281,8 +1283,10 @@ paths:
       summary: Change a Case workflow step as the resident creator
       description: Requires ownership, selected house access, a trusted Origin and a
         JSON body with step_key and expected_workflow_version from workflow.version.
-        Only closed_by_executor can confirm repair (completed without a route, otherwise
-        awaiting_recalculation) or reject it (in_progress). Other transitions return
+        Only closed_by_executor can confirm repair (awaiting_recalculation for heating,
+        hot_water, cold_water or any configured billing route; completed for other categories
+        without a route) or reject it (in_progress). Missing routes for heating and hot_water
+        default to the UK demo adapter; cold_water defaults to RKC. Existing routes take precedence. Other transitions return
         422. Stale versions return 409. No action creates another case. Use the actions
         endpoint for clarification and billing decisions.
       security:
@@ -2821,8 +2825,10 @@ paths:
       description: Use workflow.available_actions from CaseDetail and the observed current_step.key
         plus workflow.version as expected_workflow_version. Requires a trusted Origin.
         State and history are saved atomically. Clarifications are private to the creator
-        and assigned company. Repair confirmation completes without a billing route
-        or creates a pending billing attempt and submits via the adapter. Adapter failures
+        and assigned company. Repair confirmation creates a pending billing attempt and submits
+        via the configured route. Missing routes for heating and hot_water default to the UK demo
+        adapter; cold_water defaults to RKC. Existing routes take precedence. Other categories
+        without a route complete immediately. Adapter failures
         persist as failed attempts and return the same case to in_progress with billing_failed.
         Retry creates a new attempt. resume_recalculation resubmits the same pending
         attempt using its stable idempotency key after an interrupted process. Recalculation
@@ -3074,8 +3080,10 @@ paths:
       description: Use workflow.available_actions from CaseDetail and the observed current_step.key
         plus workflow.version as expected_workflow_version. Requires a trusted Origin.
         State and history are saved atomically. Clarifications are private to the creator
-        and assigned company. Repair confirmation completes without a billing route
-        or creates a pending billing attempt and submits via the adapter. Adapter failures
+        and assigned company. Repair confirmation creates a pending billing attempt and submits
+        via the configured route. Missing routes for heating and hot_water default to the UK demo
+        adapter; cold_water defaults to RKC. Existing routes take precedence. Other categories
+        without a route complete immediately. Adapter failures
         persist as failed attempts and return the same case to in_progress with billing_failed.
         Retry creates a new attempt. resume_recalculation resubmits the same pending
         attempt using its stable idempotency key after an interrupted process. Recalculation

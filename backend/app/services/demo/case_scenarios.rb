@@ -37,9 +37,9 @@ module Demo
 
     def call(scenarios: SCENARIOS)
       started_at = Time.current.change(usec: 0)
-      ["heating", "hot_water", "cold_water"].each do |key|
+      BillingRoute::DEFAULT_ADAPTERS.each do |key, adapter|
         BillingRoute.find_or_create_by!(house: @house, case_type: CaseType.find_by!(key: key)) do |route|
-          route.adapter = key == "cold_water" ? "rko" : "uk"
+          route.adapter = adapter
         end
       end
       @neighbors = NEIGHBORS.each_with_index.map do |(first_name, last_name), index|
