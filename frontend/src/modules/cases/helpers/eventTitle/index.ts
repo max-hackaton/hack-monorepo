@@ -18,7 +18,7 @@ export function eventTitle(event: CaseEvent) {
     case 'repair_rejected':
       return 'Проблема не устранена, заявка возвращена в работу'
     case 'recalculation_submitted':
-      return 'Передача на перерасчёт принята (демо)'
+      return 'Передача на перерасчёт принята'
     case 'recalculation_failed':
       return 'Не удалось передать данные на перерасчёт'
     case 'recalculation_retried':
