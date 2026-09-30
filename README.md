@@ -41,13 +41,41 @@
 
 ## Состав и архитектура
 
-| Компонент | Роль |
+Локально [`docker-compose.yml`](docker-compose.yml) запускает три сервиса: `frontend`, `rails` и `postgres`. Frontend отдаёт интерфейс, браузер отправляет запросы напрямую в Rails API, а Rails хранит записи и фотографии в двух отдельных томах. Nginx не проксирует API.
+
+```mermaid
+flowchart LR
+    user["Житель или диспетчер<br/>Браузер / MAX Mini App"]
+    max["MAX<br/>Бот, чаты, Bot API"]
+
+    subgraph local["Локальный Docker Compose"]
+        frontend["frontend<br/>Nginx + React"]
+        rails["rails<br/>API и логика заявок"]
+        postgres["postgres<br/>PostgreSQL"]
+        db_volume[("postgres_data<br/>Записи и сессии")]
+        file_volume[("rails_storage<br/>Фотографии")]
+    end
+
+    user -->|"Загрузка интерфейса"| frontend
+    user -->|"Запросы /api, cookie max_session"| rails
+    rails -->|"SQL"| postgres
+    postgres --> db_volume
+    rails -->|"Active Storage"| file_volume
+    max -->|"Данные запуска Mini App"| user
+    max -->|"Webhook событий чата"| rails
+    rails -->|"Проверка членства и сообщения бота"| max
+```
+
+| Компонент | Назначение |
 | --- | --- |
-| [`frontend/`](frontend/) | React 19, TypeScript, Vite и MAX UI. После сборки статические файлы раздаёт Nginx. Браузер обращается к API по `API_URL`; Nginx не проксирует API. |
-| [`backend/`](backend/) | Rails 8.1 API: сессии и роли, доступ к дому, заявки, история, действия диспетчера и жителя, защищённая выдача фото. Контракт API - [`backend/openapi.yaml`](backend/openapi.yaml). |
-| PostgreSQL 17 | Заявки, пользователи, связи с домами, события, сессии и метаданные вложений. |
-| Active Storage | Файлы фотографий в локальном хранилище Rails. |
-| [`docker-compose.yml`](docker-compose.yml) | Общий локальный стенд из `postgres`, `rails` и `frontend`; запуск Rails и frontend ожидает готовности зависимостей. |
+| [`frontend/`](frontend/) | React 19, TypeScript, Vite и MAX UI. Docker собирает статические файлы и раздаёт их через Nginx. Адрес Rails API попадает в сборку как `VITE_API_URL`; запросы из браузера отправляются с сессионной cookie. |
+| [`backend/`](backend/) | Rails 8.1 API: вход, выбор роли и дома, заявки, статусы, история, действия жителя и диспетчера, проверка доступа к фото. Контракт запросов и ответов - [`backend/openapi.yaml`](backend/openapi.yaml). |
+| `postgres` | PostgreSQL 17 с данными пользователей, домов, заявок, событий, сессий и метаданными фото. База сохраняется в томе `postgres_data`; её порт не опубликован на хосте. |
+| `rails_storage` | Отдельный том для файлов Active Storage. Rails выдаёт фотографии через защищённые маршруты API. |
+| MAX | Внешний сервис для запуска Mini App, проверки членства в домовых чатах, webhook событий и отправки сообщений ботом. В локальном Compose секреты MAX не передаются: для проверки интерфейса используется тестовый вход. |
+| Адаптеры перерасчёта | Код внутри Rails для маршрутов `uk` и `rko`. Сейчас возвращает демонстрационную квитанцию без обращения к внешнему биллингу. |
+
+При старте `rails` ждёт готовности PostgreSQL, выполняет `db:prepare db:seed` и запускает API. `frontend` стартует после успешной проверки `/up` у Rails. Состояние заявки меняет только backend; frontend показывает полученный статус и разрешённые для текущей роли действия.
 
 ## Локальный запуск
 
