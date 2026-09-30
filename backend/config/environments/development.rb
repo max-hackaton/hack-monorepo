@@ -4,11 +4,12 @@ require "active_support/core_ext/integer/time"
 
 Rails.application.configure do
   config.x.auth.origins = [
+    ENV["FRONTEND_URL"].presence,
     "http://localhost:#{ENV.fetch('FRONTEND_PORT', 5173)}",
     "http://127.0.0.1:#{ENV.fetch('FRONTEND_PORT', 5173)}",
     "http://localhost:#{ENV.fetch('API_PORT', 9000)}",
     "http://127.0.0.1:#{ENV.fetch('API_PORT', 9000)}",
-  ]
+  ].compact.uniq
   config.x.auth.cookie_options = {
     httponly: true, secure: false, same_site: :lax, path: "/",
   }.freeze
