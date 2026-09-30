@@ -18,7 +18,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with:
           working-directory: backend
@@ -61,7 +61,7 @@ jobs:
           --health-cmd "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""
           --health-interval=5s --health-timeout=5s --health-retries=10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install native dependencies
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq-dev libvips
       - uses: ruby/setup-ruby@v1
@@ -81,7 +81,7 @@ jobs:
     env:
       VITE_API_URL: https://api.example.com
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
         with:
           version: 12
@@ -119,7 +119,7 @@ jobs:
       MAX_WEBHOOK_SECRET: ${{ secrets.MAX_WEBHOOK_SECRET }}
       HACKATON_DATABASE_PASSWORD: ${{ secrets.HACKATON_DATABASE_PASSWORD }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with:
           working-directory: backend
