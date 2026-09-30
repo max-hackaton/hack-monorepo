@@ -192,12 +192,12 @@ PostgreSQL хранит предметные данные и сессии в т�
 
 ## Проверки
 
-| Что | Адрес или файл |
-| --- | --- |
-| Бот в MAX | [@t482_hakaton_max_bot](https://max.ru/t482_hakaton_max_bot) |
-| Мини-приложение | Кнопка «Открыть приложение» в боте; адрес frontend: [app.smirnov-web.ru](https://app.smirnov-web.ru/) |
-| API | [api.smirnov-web.ru](https://api.smirnov-web.ru/) |
-| Swagger UI | [api.smirnov-web.ru/docs](https://api.smirnov-web.ru/docs) |
-| OpenAPI 3.1 | [Спецификация на сервере](https://api.smirnov-web.ru/docs/openapi.yaml), [копия в репозитории](backend/openapi.yaml) |
-| Сценарии проверки API | [submission/DATA-API.yaml](submission/DATA-API.yaml), 79 проверок для всех 48 операций OpenAPI |
-| Инструкция по проверке API | [submission/README.md](submission/README.md) |
+<table>
+<tr><td>Бот в MAX</td><td><a href="https://max.ru/t482_hakaton_max_bot">@t482_hakaton_max_bot</a></td></tr>
+<tr><td>Мини-приложение</td><td>Кнопка «Открыть приложение» в боте; адрес frontend: <a href="https://app.smirnov-web.ru/">app.smirnov-web.ru</a></td></tr>
+<tr><td>API</td><td><a href="https://api.smirnov-web.ru/">api.smirnov-web.ru</a></td></tr>
+<tr><td>Swagger UI</td><td><a href="https://api.smirnov-web.ru/docs">api.smirnov-web.ru/docs</a></td></tr>
+<tr><td>OpenAPI 3.1</td><td><a href="https://api.smirnov-web.ru/docs/openapi.yaml">Спецификация на сервере</a>, <a href="backend/openapi.yaml">копия в репозитории</a></td></tr>
+<tr><td>Сценарии проверки API</td><td><a href="submission/DATA-API.yaml">submission/DATA-API.yaml</a>, 79 проверок для всех 48 операций OpenAPI</td></tr>
+<tr><td>Инструкция по проверке API</td><td><a href="submission/README.md">submission/README.md</a></td></tr>
+</table>
