@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+  '/up': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Check application availability */
+    get: operations['getHealth']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/max/webhook': {
     parameters: {
       query?: never
@@ -15,7 +32,7 @@ export interface paths {
     put?: never
     /**
      * Receive MAX bot and membership updates
-     * @description Authenticated with X-Max-Bot-Api-Secret, not a user session. Subscribed to bot_added, bot_admin_permissions_changed, user_added, user_removed, message_created and bot_started. Group bot_added and group bot_admin_permissions_changed with is_admin=true find or create a house by chat_id with a placeholder address "Демо-дом чата <chat_id>". Newly created houses belong to the shared demo management company and are available to its dispatchers; new cases inherit this company. Existing houses, their company assignments and cases are unchanged. It then sends the welcome message and pins it when permitted. The welcome button includes payload house_<id> so the login selects this house even without chat context. This house requires verified chat membership like any real house. Group user_added rechecks MAX membership and restores access for an existing user and house. Group user_removed deletes the user-house link and clears the selected house across all user sessions synchronously; the user and case history remain. Membership webhook handling then selects the shared demo house for empty sessions. Removals older than a later successful membership check are ignored. Repeated membership deliveries are safe; repeated bot_added or admin permission deliveries reuse the house but may resend the welcome message. Admin permission updates with is_admin=false and channels are ignored; membership updates for unknown users or houses are ignored. Revocation takes effect for subsequent authorization checks; already authorized requests may finish. Private messages and bot_started receive a welcome with an app button. Group messages receive a reply only when they mention this bot by ID or username; the button selects the registered house when available. These replies are not pinned and do not create houses or memberships. Messages from bots and channels are ignored. Group message updates require administrator permission read_all_messages. Repeated message or start deliveries may resend the welcome.
+     * @description Handles MAX bot, membership and message updates. Requires X-Max-Bot-Api-Secret.
      */
     post: operations['receiveMaxBotUpdate']
     delete?: never
@@ -33,13 +50,13 @@ export interface paths {
     }
     /**
      * Restore current user, selected role and accessible house from the session cookie
-     * @description Verified selected memberships are checked locally. An existing unverified membership is checked through MAX and stored as verified on success. A negative check revokes that house across sessions. A missing or inaccessible selection automatically falls back to the shared demo house. Development accounts use the same demo house only in development. MAX errors return 503 without fallback. MAX users also join the demo house's management company, including existing sessions with an accessible selected house. Development accounts keep their seeded access. active_role is stored in this session; available_roles reflects current company access. Revoked real-company membership does not revoke demo-company access. Available roles are derived from current accessible company memberships.
+     * @description Returns the session user, house and roles. Falls back to the demo house when access is lost; MAX failures return 503.
      */
     get: operations['getCurrentUser']
     put?: never
     /**
      * Verify MAX initData and create or rotate a user session with optional house context
-     * @description Production requires signed MAX initData, including when hosted locally. The exact init_data value __DEV_USER__ is accepted only by a Rails development backend. It creates or reuses max_user_id demo_resident (Иван Смирнов) without a MAX bot token and selects the shared demo house. Development and production seeds use identical houses and scenarios. The development account can access only synthetic demo houses. Its dispatcher access is restricted to the demo company and denied if that company contains real houses or cases. Production rejects its cookies and all unsigned development or demo markers. The old __DEV_RESIDENT__, __DEV_DISPATCHER__ and __DEMO_USER__ markers are rejected everywhere. Login does not select a role. A new login rotates the session cookie and invalidates the previous token. All POST requests still require a trusted Origin. Other values follow the normal MAX signature and timestamp verification. A signed chat.id is matched to houses.max_chat_id, then live chat membership is checked. A signed start_param of the form house_<id> selects that house after checking its chat membership through MAX, even without chat context or when launched from another chat. An unknown house or a user who is not a member does not gain access from this parameter. A signed start_param of the form case_<id> instead selects the public Case's house after checking membership through MAX, even without chat context or when launched from another chat. An unknown or private Case does not grant house access. The frontend opens /cases/<id> after authentication; the normal Case access checks still apply. A verified chat launch with confirmed membership selects that real house and records it in the user's houses with verified_at. Signed login rechecks MAX even for an existing link. A verified MAX user without an accessible launch house instead selects the shared demo house, which is also recorded in discovered houses. This includes a launch without a chat.id or one whose chat has no linked house or confirmed membership. Login also grants every verified MAX user membership in the demo house's management company, including users with a real selected house. Both resident and dispatcher modes are then available; other companies still require their own membership. A new session replaces the previous session and its house selection. When a valid session cookie belongs to the same verified user, its active_role is preserved if the role is still available. First login, login after logout, an expired or missing cookie, a different MAX account, or a role that is no longer available results in active_role=null. MAX initData and the development login marker never select a role. Demo fallback never bypasses MAX launch data verification, and an unavailable MAX membership service still returns 503 when a real house check is required. Send init_data through JSON, form or query parameters.
+     * @description Verifies MAX initData and sets a 30-day session cookie. Requires a trusted Origin. __DEV_USER__ is accepted only in development.
      */
     post: operations['authenticateMax']
     /**
@@ -51,7 +68,7 @@ export interface paths {
     head?: never
     /**
      * Select the active role for the current session
-     * @description Requires a valid max_session cookie and trusted Origin. Resident is available to every authenticated user. Dispatcher requires a current management company membership. The active role affects only this session and does not grant house or dispatch access. Selecting dispatcher also initializes an empty saved working-house selection with the current session house when it belongs to the demo company and is accessible to the dispatcher. Existing saved selections are preserved. Selecting resident and reading the session do not initialize it. House recovery follows GET session; a failed recovery does not change the role.
+     * @description Selects a role for this session. Dispatcher requires company membership. Requires a trusted Origin.
      */
     patch: operations['selectSessionRole']
     trace?: never
@@ -66,7 +83,7 @@ export interface paths {
     get?: never
     /**
      * Select a previously discovered house for the current session
-     * @description Requires a valid session, including one with house=null. The house must be in the current user's house list. Verified real-house links are checked locally; legacy links are verified once through MAX. The shared demo house does not require a chat membership check. A failed legacy check removes the stale link and clears that house across sessions. Send a trusted Origin. Supply house_id through JSON, form or query parameters.
+     * @description Selects a house from the user's discovered houses. Unverified memberships are checked through MAX. Requires a trusted Origin.
      */
     put: operations['selectSessionHouse']
     post?: never
@@ -85,7 +102,7 @@ export interface paths {
     }
     /**
      * List houses previously discovered by the current user
-     * @description Works with any valid session, including house=null. Houses come from user_houses and are ordered by id. user_removed removes the corresponding house from this list. Legacy links without verified_at remain discoverable and are verified when selecting or accessing that house. Listing houses does not call MAX, create memberships or change the selected house. The development account lists only synthetic demo houses.
+     * @description Lists the user's discovered houses by ID without changing the selection or checking MAX membership.
      */
     get: operations['listDiscoveredHouses']
     put?: never
@@ -105,7 +122,7 @@ export interface paths {
     }
     /**
      * Get the active public and own private Case feed for the session house
-     * @description Requires access to the selected real or demo house. An unverified discovered membership is automatically verified through MAX. A missing or inaccessible selection falls back to the shared demo house, following GET session. The page contains at most 20 Case records. With sort=activity, the feed includes public Cases and private Cases created by the current user. With sort=confirmations, it includes only public Cases. Private Cases of other residents are always excluded. active_cases_count includes every active Case visible to this user in the selected house, independent of sort and page size. A Case with current_step.status_key=completed is excluded; a Case with closed_by_executor remains active. last_activity_at is the latest case_events.occurred_at, falling back to cases.created_at. Changes between page requests can move records because pagination does not hold a snapshot.
+     * @description Returns up to 20 cases in the selected house. Private cases are visible only to their creator; confirmations sort includes only public cases.
      */
     get: operations['getHome']
     put?: never
@@ -125,7 +142,7 @@ export interface paths {
     }
     /**
      * List the available Case types for creating a Case
-     * @description Requires an authenticated session and access to the selected house, including demo-house access. Returns the global catalog in the order heating, elevator, yard, leak, hot_water, cold_water, electricity, other. Legacy demo aliases are excluded. Use a type's key to fetch its constructor and workflow steps.
+     * @description Returns the ordered case type catalog. Requires a session and access to the selected house.
      */
     get: operations['listCaseTypes']
     put?: never
@@ -145,7 +162,7 @@ export interface paths {
     }
     /**
      * Get the constructor and workflow steps for a Case type
-     * @description Requires an authenticated session and access to the selected house, including enabled demo-house access. Steps are ordered by sort_order. A known type without steps returns an empty steps array, but cannot be used to create a Case. The frontend uses step key and kind; step database IDs are not exposed. Render only the returned constructor fields: problem and, where needed, location. Elevator location is fixed in the template. Filter location options by their optional problem_keys and clear a selection made unavailable by a problem change. Options with input_label require nonblank user wording after their text prefix. Replace each {field_key} in description_template with the resulting fragment, allow manual edits and submit the final description. Structured answers are not submitted or stored; the backend does not regenerate the text. Capture the start time separately through the optional violation_started_at field, without inferring it from constructor answers or automatically inserting it into the description.
+     * @description Returns the description constructor and ordered workflow steps. Submit the final edited description; violation_started_at is a separate field.
      */
     get: operations['getCaseType']
     put?: never
@@ -165,13 +182,13 @@ export interface paths {
     }
     /**
      * List Cases created by or subscribed to by the current user
-     * @description Requires an authenticated session and access to the selected house, including stored verified membership for real houses and demo-house access. The default mine scope returns the current user's public and private Cases in that house. The subscriptions scope returns public Cases in that house that the current user has confirmed using the existing confirmation action. Both scopes include completed Cases unless status filters them. The Case status belongs to its author's workflow; subscribers do not have a separate lifecycle. Results are ordered by latest event or record update descending, then Case ID descending, with at most 20 records per page. Pagination is not a snapshot: Cases can move between pages as new activity occurs. Cursors are opaque, signed and bound to the current user, selected house, scope and status filter.
+     * @description Returns up to 20 cases by latest activity in the selected house. mine includes own cases; subscriptions includes confirmed public cases. Cursors depend on user, house and filters.
      */
     get: operations['listCases']
     put?: never
     /**
      * Create a public or private Case in the session house
-     * @description Uses the authenticated user as creator and the accessible session house, including the shared demo house. The backend selects the first step by sort_order. Creating the Case and its case_created event is atomic. Additional request fields are ignored; the client cannot override the house, creator or current step. The description is the final edited text from the frontend. Choose public to include it in the house feed and queue a message to the real house's MAX chat after commit. The message contains the Case number, category, up to 3000 description characters and an open_app button with payload case_<id>. Publication is asynchronous: 201 confirms Case creation, not delivery to MAX. Private Cases and synthetic demo, development or load-test houses are never published. Send typed fields in a JSON object or multipart form body and use a trusted Origin. Query parameters are not used for creation. is_emergency defaults to false; malformed field types return 400. Upload optional photos as multipart photos[] files. Signed blob IDs and direct uploads are not supported; photos use protected Case URLs.
+     * @description Creates a case in the selected house. Accepts JSON or multipart photos[] and requires a trusted Origin. Public chat publication is asynchronous.
      */
     post: operations['createCase']
     delete?: never
@@ -189,7 +206,7 @@ export interface paths {
     }
     /**
      * Get a Case visible to the current user in the session house
-     * @description Public Case records are visible to members of their house. Private Case records are visible only to their creator on this resident route, who must still have access to the selected house. Completed Case records remain readable. Records from another house and private records belonging to another user are not revealed. Uses the same stored membership and demo-house access checks as the home feed.
+     * @description Requires access to the selected house. Public cases are visible to house members; private cases only to their creator. Completed cases remain readable.
      */
     get: operations['getCase']
     put?: never
@@ -209,7 +226,7 @@ export interface paths {
     }
     /**
      * Read a photo attached to an accessible Case
-     * @description Requires the same authenticated session, stored verified house membership or demo-house access, and Case visibility checks as Case detail. Public Case photos are visible to members of their house; private Case photos are visible only to the creator through this resident route while they have house access. Completed Case photos remain readable. The response returns the original image through this protected route without exposing a public Active Storage URL.
+     * @description Returns the original photo with the same house and visibility checks as case details. No public storage URL is exposed.
      */
     get: operations['getCasePhoto']
     put?: never
@@ -231,7 +248,7 @@ export interface paths {
     put?: never
     /**
      * Confirm that an active public Case affects the current user too
-     * @description Uses the authenticated user and session house, including the shared demo house. Send no request body. Repeated requests are idempotent, with one confirmation per Case and user. Private Case records and Case records from another house are not revealed. This is also the subscription action: after success the Case appears in GET /api/cases?scope=subscriptions. Subscriptions reuse confirmations; there is no separate subscription resource or unsubscribe action. New confirmations remain disallowed for the creator and for completed Cases. An existing confirmation remains valid after completion, so the Case stays in the subscriptions list with its author's current workflow status.
+     * @description Confirms and subscribes to a public case in the selected house. Idempotent; send no body. New confirmations are forbidden for the creator and completed cases.
      */
     post: operations['confirmCase']
     delete?: never
@@ -249,7 +266,7 @@ export interface paths {
     }
     /**
      * Read Case history as a resident
-     * @description Requires access to the selected house through stored verified membership or demo-house checks. Public Cases are readable by house members; private Cases only by their creator. Events are ordered by occurred_at descending, then id descending, with at most 50 per page. Only the creator can read notes; neighbors see non-message events of public Cases. Visibility is filtered before pagination. Completed Case history remains readable. The signed cursor is bound to the Case, user and creator or neighbor access mode. Poll the first page for recent events and merge by event ID; use next_cursor for older history. Pagination is not a snapshot.
+     * @description Returns up to 50 events, newest first. Notes are visible only to the creator; neighbors see public case history. Use next_cursor for older events.
      */
     get: operations['listResidentCaseEvents']
     put?: never
@@ -271,7 +288,7 @@ export interface paths {
     put?: never
     /**
      * Add a Case note as its creator
-     * @description Requires an accessible selected house and ownership of the Case. Supply body through Rails-parsed JSON, form or query parameters and send a trusted Origin. The backend assigns the authenticated actor and sender_role resident. The note is stored as a message_added CaseEvent and is visible to the creator and authorized dispatchers. For legacy Cases in action_required without a recorded clarification question, a valid note atomically returns the Case to in_progress, increments workflow_version and adds a status_changed event. For Cases with recorded questions, notes do not change the workflow; use the versioned answer_clarification action to answer a question. Completed Cases reject new notes. Repeated POST requests create separate notes.
+     * @description Adds a private note for the creator and dispatchers. Requires ownership and a trusted Origin. Completed cases reject notes; use answer_clarification for recorded questions.
      */
     post: operations['createResidentCaseMessage']
     delete?: never
@@ -290,7 +307,7 @@ export interface paths {
     get?: never
     /**
      * Change a Case workflow step as the resident creator
-     * @description Requires ownership, selected house access, a trusted Origin and a JSON body with step_key and expected_workflow_version from workflow.version. Only closed_by_executor can confirm repair (completed without a route, otherwise awaiting_recalculation) or reject it (in_progress). Other transitions return 422. Stale versions return 409. No action creates another case. Use the actions endpoint for clarification and billing decisions.
+     * @description The creator can confirm or reject repair from closed_by_executor. Send step_key, expected_workflow_version and a trusted Origin. Use actions for clarification and billing.
      */
     put: operations['replaceResidentCaseStatus']
     post?: never
@@ -299,7 +316,7 @@ export interface paths {
     head?: never
     /**
      * Change a Case workflow step as the resident creator
-     * @description Requires ownership, selected house access, a trusted Origin and a JSON body with step_key and expected_workflow_version from workflow.version. Only closed_by_executor can confirm repair (completed without a route, otherwise awaiting_recalculation) or reject it (in_progress). Other transitions return 422. Stale versions return 409. No action creates another case. Use the actions endpoint for clarification and billing decisions.
+     * @description The creator can confirm or reject repair from closed_by_executor. Send step_key, expected_workflow_version and a trusted Origin. Use actions for clarification and billing.
      */
     patch: operations['updateResidentCaseStatus']
     trace?: never
@@ -313,7 +330,7 @@ export interface paths {
     }
     /**
      * List assigned management companies
-     * @description Returns current staff assignments ordered by company name and ID. No selected house or MAX chat membership is required. A session without assignments receives 403 dispatch_forbidden.
+     * @description Lists current company memberships by company name and ID. Returns 403 when no membership exists.
      */
     get: operations['listDispatchCompanies']
     put?: never
@@ -333,7 +350,7 @@ export interface paths {
     }
     /**
      * List houses managed by the dispatcher's companies, including houses without cases
-     * @description Does not require resident chat membership or a selected session house. Includes currently managed houses and houses containing cases assigned to the dispatcher's companies, preserving access after a house changes company. Returns up to 100 houses ordered by ID. Membership is checked on every request.
+     * @description Returns up to 100 accessible houses by ID, including houses with cases assigned to the dispatcher's companies.
      */
     get: operations['listDispatchHouses']
     put?: never
@@ -353,12 +370,12 @@ export interface paths {
     }
     /**
      * Read the current dispatcher's saved working houses
-     * @description Returns the selected houses still accessible through the dispatcher's companies, ordered by ID. The selection belongs to the user and persists across sessions. It does not grant access or change resident house membership. Initially empty, except when selecting the dispatcher role initializes it with the accessible current house belonging to the demo company. This GET never changes the selection; an explicitly cleared selection stays empty until another role selection.
+     * @description Returns saved working houses still accessible to the dispatcher. The selection persists across sessions; reading it does not change it.
      */
     get: operations['getDispatchHouseSelection']
     /**
      * Replace the current dispatcher's working houses
-     * @description Atomically replaces the list. Every house must be accessible to the dispatcher. Duplicate IDs are normalized; an empty array clears the selection. Requires a trusted Origin. Other dispatchers' selections and resident memberships are unchanged.
+     * @description Replaces the saved working houses. All IDs must be accessible; duplicates are removed and an empty array clears the selection. Requires a trusted Origin.
      */
     put: operations['updateDispatchHouseSelection']
     post?: never
@@ -377,7 +394,7 @@ export interface paths {
     }
     /**
      * List cases assigned to the dispatcher
-     * @description Requires a signed session and current management-company membership. Access follows the management_company_id stored on the Case, including private and completed Cases. No selected house or MAX chat membership is required. Cases without a company are excluded. Returns at most 20 Cases ordered by created_at descending, then ID descending. Filters are combined. Signed cursors bind the user, current assignment set and normalized filters. Pagination is not a snapshot. can_confirm is always false.
+     * @description Returns up to 20 company cases, newest first, including private and completed cases. Filters combine; cursors depend on user, company memberships and filters.
      */
     get: operations['listDispatchCases']
     put?: never
@@ -397,7 +414,7 @@ export interface paths {
     }
     /**
      * Read a case as its assigned dispatcher
-     * @description Requires a signed session and current management-company membership. Access follows the management_company_id stored on the Case, including private and completed Cases. No selected house or MAX chat membership is required. Cases without a company are excluded. Photo URLs use dispatcher authorization. available_steps contains only permitted start-work or finish-work targets. Use workflow.available_actions for clarification and billing actions. It is empty after completed. can_confirm is false.
+     * @description Requires membership in the case's company. Includes private and completed cases. Use available_steps for status changes and workflow.available_actions for other actions.
      */
     get: operations['getDispatchCase']
     put?: never
@@ -417,7 +434,7 @@ export interface paths {
     }
     /**
      * Read a protected case photo as its assigned dispatcher
-     * @description Requires a signed session and current management-company membership. Access follows the management_company_id stored on the Case, including private and completed Cases. No selected house or MAX chat membership is required. Cases without a company are excluded. Returns the original attachment without a public Active Storage URL. Responses are not cached.
+     * @description Returns the original photo without caching. Requires membership in the case's company, including for private and completed cases.
      */
     get: operations['getDispatchCasePhoto']
     put?: never
@@ -437,7 +454,7 @@ export interface paths {
     }
     /**
      * Read case history and private correspondence
-     * @description Requires a signed session and current management-company membership. Access follows the management_company_id stored on the Case, including private and completed Cases. No selected house or MAX chat membership is required. Cases without a company are excluded. Returns at most 50 events ordered by occurred_at descending, then ID descending, including private resident/dispatcher messages and clarification events for authorized company members. Cursors bind user, Case and dispatcher access mode. Poll the first page and merge by event ID for updates.
+     * @description Returns up to 50 events, newest first, including private messages. Requires membership in the case's company. Use next_cursor for older history.
      */
     get: operations['getDispatchCaseEvents']
     put?: never
@@ -459,7 +476,7 @@ export interface paths {
     put?: never
     /**
      * Send a reply to the resident
-     * @description Requires a signed session and current management-company membership. Access follows the management_company_id stored on the Case, including private and completed Cases. No selected house or MAX chat membership is required. Cases without a company are excluded. Requires an application/json object and trusted Origin. Only body is read from the JSON; query parameters cannot supply it. Actor and sender_role dispatcher are assigned by the backend. Additional JSON properties are ignored. Repeated POSTs create separate messages. Completed Cases reject new messages.
+     * @description Adds a private message. Requires company membership, a JSON body and a trusted Origin. Completed cases reject messages; repeated requests create separate messages.
      */
     post: operations['createDispatchCaseMessage']
     delete?: never
@@ -478,7 +495,7 @@ export interface paths {
     get?: never
     /**
      * Change a case workflow step as its assigned dispatcher
-     * @description Requires a signed session and current management-company membership. Access follows the management_company_id stored on the Case, including private and completed Cases. No selected house or MAX chat membership is required. Cases without a company are excluded. Requires an application/json object and trusted Origin. Choose step_key from available_steps and send the last observed expected_current_step_key. Only new to in_progress and in_progress to closed_by_executor are permitted. Clarification requires the actions endpoint with a question. Dispatchers cannot choose completed or awaiting_recalculation directly. State and domain events are atomic. Invalid transitions return 422, changed expected steps return 409. Photo URLs use dispatcher access and can_confirm is false.
+     * @description Allows new to in_progress or in_progress to closed_by_executor. Send step_key and expected_current_step_key. Requires company membership and a trusted Origin.
      */
     put: operations['replaceDispatchCaseStatus']
     post?: never
@@ -487,7 +504,7 @@ export interface paths {
     head?: never
     /**
      * Change a case workflow step as its assigned dispatcher
-     * @description Requires a signed session and current management-company membership. Access follows the management_company_id stored on the Case, including private and completed Cases. No selected house or MAX chat membership is required. Cases without a company are excluded. Requires an application/json object and trusted Origin. Choose step_key from available_steps and send the last observed expected_current_step_key. Only new to in_progress and in_progress to closed_by_executor are permitted. Clarification requires the actions endpoint with a question. Dispatchers cannot choose completed or awaiting_recalculation directly. State and domain events are atomic. Invalid transitions return 422, changed expected steps return 409. Photo URLs use dispatcher access and can_confirm is false.
+     * @description Allows new to in_progress or in_progress to closed_by_executor. Send step_key and expected_current_step_key. Requires company membership and a trusted Origin.
      */
     patch: operations['updateDispatchCaseStatus']
     trace?: never
@@ -502,7 +519,7 @@ export interface paths {
     get?: never
     /**
      * Confirm or correct a case constructor choice and emergency status
-     * @description Body-only fields. Preserve the original resident choice. Classification moves a new case into in_progress; other mutable states keep their status. Return 422 for closed cases and category changes without an unambiguous matching step. The sole active matching contractor is assigned automatically; multiple candidates require selection. No candidate does not prevent confirmation. A repeated request for the current confirmed choice is a no-op even with an older version; other stale writes return 409. Classification, reassignment and history are atomic. Refresh case details for contractor contacts.
+     * @description Confirms classification and starts new cases. A sole matching contractor is assigned automatically. Repeating the current choice is a no-op; other stale writes return 409.
      */
     put: operations['updateCaseClassification']
     post?: never
@@ -511,7 +528,7 @@ export interface paths {
     head?: never
     /**
      * Confirm or correct a case constructor choice
-     * @description Body-only fields. Preserve the original resident choice. Classification moves a new case into in_progress; other mutable states keep their status. Return 422 for closed cases and category changes without an unambiguous matching step. The sole active matching contractor is assigned automatically; multiple candidates require selection. No candidate does not prevent confirmation. A repeated request for the current confirmed choice is a no-op even with an older version; other stale writes return 409. Classification, reassignment and history are atomic. Refresh case details for contractor contacts.
+     * @description Confirms classification and starts new cases. A sole matching contractor is assigned automatically. Repeating the current choice is a no-op; other stale writes return 409.
      */
     patch: operations['patchCaseClassification']
     trace?: never
@@ -526,7 +543,7 @@ export interface paths {
     get?: never
     /**
      * Assign an eligible contractor to a confirmed case
-     * @description Only active contractors matching the confirmed choice and house/company rules can be assigned. Confirmation is required. Closed cases return 422; stale changes return 409. Repeating the current assignment is a no-op even with an older version. History records the actor and contractor name without contact details.
+     * @description Assigns an active contractor matching the confirmed classification. Closed cases return 422; stale changes return 409. Repeating the current assignment is a no-op.
      */
     put: operations['updateCaseAssignment']
     post?: never
@@ -535,7 +552,7 @@ export interface paths {
     head?: never
     /**
      * Assign an eligible contractor to a confirmed case
-     * @description Only active contractors matching the confirmed choice and house/company rules can be assigned. Confirmation is required. Closed cases return 422; stale changes return 409. Repeating the current assignment is a no-op even with an older version. History records the actor and contractor name without contact details.
+     * @description Assigns an active contractor matching the confirmed classification. Closed cases return 422; stale changes return 409. Repeating the current assignment is a no-op.
      */
     patch: operations['patchCaseAssignment']
     trace?: never
@@ -608,7 +625,7 @@ export interface paths {
     get?: never
     /**
      * Edit or archive a contractor
-     * @description Archival excludes a contractor from new routing and assignments while preserving existing assignments and history. Set archived=false to reactivate. Company ownership cannot be changed.
+     * @description Archiving excludes future assignments but preserves history. Set archived=false to reactivate. Company ownership cannot change.
      */
     put: operations['replaceCompanyContractor']
     post?: never
@@ -617,7 +634,7 @@ export interface paths {
     head?: never
     /**
      * Edit or archive a contractor
-     * @description Archival excludes a contractor from new routing and assignments while preserving existing assignments and history. Set archived=false to reactivate. Company ownership cannot be changed.
+     * @description Archiving excludes future assignments but preserves history. Set archived=false to reactivate. Company ownership cannot change.
      */
     patch: operations['updateCompanyContractor']
     trace?: never
@@ -634,7 +651,7 @@ export interface paths {
     put?: never
     /**
      * Map a constructor choice to a contractor
-     * @description House and contractor must belong to the URL company. Contractor must be active. Any problem option from the selected constructor is supported. Active house rules override company-wide rules. Changes affect future classification and selection; existing assignments remain unchanged.
+     * @description House and active contractor must belong to the URL company. House rules override company rules. Existing assignments remain unchanged.
      */
     post: operations['createCompanyContractorRouting']
     delete?: never
@@ -671,7 +688,7 @@ export interface paths {
     put?: never
     /**
      * Perform an authorized resident case action
-     * @description Use workflow.available_actions from CaseDetail and the observed current_step.key plus workflow.version as expected_workflow_version. Requires a trusted Origin. State and history are saved atomically. Clarifications are private to the creator and assigned company. Repair confirmation completes without a billing route or creates a pending billing attempt and submits via the adapter. Adapter failures persist as failed attempts and return the same case to in_progress with billing_failed. Retry creates a new attempt. resume_recalculation resubmits the same pending attempt using its stable idempotency key after an interrupted process. Recalculation confirmation is allowed only after a submitted receipt. No action creates another case. Billing adapters simulate UK/RKC in the MVP; no external billing API is connected.
+     * @description Choose workflow.available_actions; send the observed step and expected_workflow_version. Requires a trusted Origin. Billing uses demo adapters.
      */
     post: operations['performResidentCaseAction']
     delete?: never
@@ -689,7 +706,7 @@ export interface paths {
     }
     /**
      * Prepare an available resident action without changing the case
-     * @description Only the case creator may prepare an action offered by workflow.available_actions. The observed step and workflow version must match the current case. For answer_clarification, context contains the latest dispatcher question as plain text to display above the answer field. Preparing the form does not change clarification history.
+     * @description Prepares an available action for the creator without changing history. The step and workflow version must match; clarification context contains the dispatcher's question.
      */
     get: operations['getResidentCaseActionForm']
     put?: never
@@ -728,7 +745,7 @@ export interface paths {
     put?: never
     /**
      * Perform an authorized dispatch case action
-     * @description Use workflow.available_actions from CaseDetail and the observed current_step.key plus workflow.version as expected_workflow_version. Requires a trusted Origin. State and history are saved atomically. Clarifications are private to the creator and assigned company. Repair confirmation completes without a billing route or creates a pending billing attempt and submits via the adapter. Adapter failures persist as failed attempts and return the same case to in_progress with billing_failed. Retry creates a new attempt. resume_recalculation resubmits the same pending attempt using its stable idempotency key after an interrupted process. Recalculation confirmation is allowed only after a submitted receipt. No action creates another case. Billing adapters simulate UK/RKC in the MVP; no external billing API is connected.
+     * @description Choose workflow.available_actions; send the observed step and expected_workflow_version. Requires a trusted Origin. Billing uses demo adapters.
      */
     post: operations['performDispatchCaseAction']
     delete?: never
@@ -752,7 +769,7 @@ export interface components {
       houses: components['schemas']['House'][]
     }
     MaxLogin: {
-      /** @description Exact unmodified window.WebApp.initData string, or the single __DEV_USER__ bypass in development only. The backend verifies the MAX HMAC-SHA256 signature and auth_date (maximum age 3600 seconds, future clock skew up to 30 seconds). The development marker needs no MAX bot token and is rejected outside Rails development. It does not select a role. */
+      /** @description Unmodified window.WebApp.initData, valid for 3600 seconds with up to 30 seconds future clock skew. __DEV_USER__ works only in development. */
       init_data: string
     }
     CurrentUser: {
@@ -768,7 +785,7 @@ export interface components {
        * @enum {string|null}
        */
       active_role: 'resident' | 'dispatcher' | null
-      /** @description Resident is always present; dispatcher requires a current company membership. MAX users automatically join the demo house's company on login and session restoration. The development account joins the same demo company with access restricted to demo data. */
+      /** @description Resident is always available; dispatcher requires company membership. MAX users also receive demo-company access. */
       available_roles: ('resident' | 'dispatcher')[]
       /** @description Selected and currently accessible real or demo house, or null when the session has no selected house or the selected house is inaccessible. */
       house: components['schemas']['House'] | null
@@ -890,11 +907,11 @@ export interface components {
       key: string
       /** @description Text shown for this selectable option. */
       label: string
-      /** @description Without input_label, substitute this text unchanged. With input_label, append the user's nonblank wording after this prefix with one space. The prefix supplies its own punctuation. An empty prefix means use only the user's wording, with no leading space. */
+      /** @description Use unchanged without input_label. Otherwise append nonblank user text with one space; an empty prefix uses only the user text. */
       text: string
-      /** @description Present only on location options. Available only for the listed problem keys; omission means available for any problem. Clear the selected location if a problem change makes it unavailable. */
+      /** @description Location is available only for these problem keys; omission allows any problem. Clear the selection when it becomes unavailable. */
       problem_keys?: string[]
-      /** @description Label for a required custom-text input. Require nonblank user wording and combine it with this option's text prefix before substituting the field into the template. */
+      /** @description Label for required nonblank user text appended to this option's prefix. */
       input_label?: string
     }
     CaseConstructorField: {
@@ -904,7 +921,7 @@ export interface components {
       /** @description Choose one available option after applying any problem_keys restriction. */
       options: components['schemas']['CaseConstructorOption'][]
     }
-    /** @description Metadata for composing a description in the frontend. Render only the returned fields and filter location options by problem_keys. Fixed wording, including the elevator location, is already in the template. For options with input_label, require nonblank user wording and join it to a nonempty text prefix with one space; if the prefix is empty, use only the user's wording. Without input_label, use text unchanged. Replace each {field_key} placeholder with its resulting fragment, then allow manual edits and submit the final description. Structured answers are not submitted or stored, and the backend does not regenerate the description or validate constructor answers separately. Capture the start time once through the optional violation_started_at field; it is not a constructor question and is not inferred from answers or added to the description. */
+    /** @description Replace {field_key} placeholders with selected option text, allow edits and submit the final description. Structured answers are not stored; violation_started_at is separate. */
     CaseConstructor: {
       description_template: string
       /** @description Questions in display order, an ordered subset of problem and location. Elevator includes only problem; its location is fixed in the template. */
@@ -914,7 +931,7 @@ export interface components {
       key: string
       name: string
       description: string | null
-      /** @description Metadata for composing a description in the frontend. Render only the returned fields and filter location options by problem_keys. Fixed wording, including the elevator location, is already in the template. For options with input_label, require nonblank user wording and join it to a nonempty text prefix with one space; if the prefix is empty, use only the user's wording. Without input_label, use text unchanged. Replace each {field_key} placeholder with its resulting fragment, then allow manual edits and submit the final description. Structured answers are not submitted or stored, and the backend does not regenerate the description or validate constructor answers separately. Capture the start time once through the optional violation_started_at field; it is not a constructor question and is not inferred from answers or added to the description. */
+      /** @description Replace {field_key} placeholders with selected option text, allow edits and submit the final description. Structured answers are not stored; violation_started_at is separate. */
       constructor: {
         description_template: string
         /** @description Questions in display order, an ordered subset of problem and location. Elevator includes only problem; its location is fixed in the template. */
@@ -923,7 +940,7 @@ export interface components {
       /** @description Workflow steps ordered by sort_order; may be empty for an unconfigured type. */
       steps: components['schemas']['Step'][]
     }
-    /** @description JSON fields use the declared types. Additional properties are ignored. House, creator and initial workflow step are assigned by the backend. Upload files through multipart photos[] fields. */
+    /** @description Extra fields are ignored. The backend assigns house, creator and initial step. Upload photos through multipart photos[]. */
     CreateCase: {
       case_type_key: string
       /** @description Final description from the frontend, stored without trimming. Must not be blank. */
@@ -957,7 +974,7 @@ export interface components {
     } & {
       [key: string]: unknown
     }
-    /** @description Multipart fields use strings and uploaded files. Additional properties are ignored. House, creator and initial workflow step are assigned by the backend. Upload files through multipart photos[] fields. */
+    /** @description Multipart values are strings and files; extra fields are ignored. The backend assigns house, creator and initial step. Upload photos through photos[]. */
     CreateCaseWithPhotos: {
       case_type_key: string
       /** @description Final description from the frontend, stored without trimming. Must not be blank. */
@@ -1064,7 +1081,7 @@ export interface components {
       first_name: string | null
       last_name: string | null
     }
-    /** @description One approved history event. The backend emits only the documented data fields and omits unsupported legacy event types; actor is null for system or legacy events without an actor. */
+    /** @description A supported history event. actor is null for system events or legacy events without an actor. */
     CaseEvent:
       | components['schemas']['CaseCreatedEvent']
       | components['schemas']['CaseConfirmationEvent']
@@ -1336,7 +1353,7 @@ export interface components {
       max_url: string | null
       archived: boolean
     }
-    /** @description Confirmation of any constructor problem option (snow, low pressure, breakdown, etc.) and emergency status. Independent of workflow status and resident confirmations. Version increases on classification and assignment changes. */
+    /** @description Confirmed problem and emergency status, independent of workflow and resident confirmations. Version increases on classification and assignment changes. */
     CaseClassification: {
       /** @enum {string} */
       status: 'pending' | 'confirmed'
@@ -1469,7 +1486,7 @@ export interface components {
       question: string
       answer: string | null
     }
-    /** @description One durable transmission attempt. MVP receipts are deterministic demos, not connected UK/RKC billing integrations. Immutable payload snapshots remain on the server. Attempts are ordered oldest first. */
+    /** @description A billing attempt, ordered oldest first. MVP receipts are demos; no external UK/RKC billing integration is connected. */
     RecalculationRequest: {
       id: string
       route_id: string
@@ -1702,6 +1719,33 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  getHealth: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Application booted successfully; does not check every external dependency */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'text/html': string
+        }
+      }
+      /** @description Application failed its health check */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+    }
+  }
   receiveMaxBotUpdate: {
     parameters: {
       query?: never
@@ -1919,7 +1963,7 @@ export interface operations {
           'application/json': components['schemas']['Error']
         }
       }
-      /** @description Invalid MAX signature, expired or malformed launch data (including duplicate fields), a legacy development marker, or the development marker outside development (invalid_max_data) */
+      /** @description Invalid or expired MAX initData, or a disallowed development marker (invalid_max_data) */
       401: {
         headers: {
           [name: string]: unknown
@@ -3197,7 +3241,7 @@ export interface operations {
           | 'closed_by_executor'
           | 'awaiting_recalculation'
           | 'completed'
-        /** @description Repeat status_keys[] for each selected workflow status. Matches any selected status before pagination; duplicates and order are normalized for cursors. Cannot be combined with status_key. */
+        /** @description Repeat status_keys[] to match any selected status. Duplicates and order are normalized for cursors. Cannot be combined with status_key. */
         'status_keys[]'?: (
           | 'new'
           | 'in_progress'
