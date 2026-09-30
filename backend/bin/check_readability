@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../lib/readability_check"
+
+Dir.chdir(File.expand_path("..", __dir__)) do
+  paths = ARGV
+  if paths.empty?
+    paths = Dir.glob("{app,test,lib,config}/**/*.{rb,rake}") + ["db/seeds.rb", __FILE__]
+  end
+  checks = paths.sort.uniq.map do |path|
+    ReadabilityCheck.new(path).call
+  end
+  warnings = checks.flat_map(&:warnings)
+  errors = checks.flat_map(&:errors)
+  warn warnings.join("\n") if warnings.any?
+  if errors.any?
+    warn errors.join("\n")
+    exit 1
+  end
+  puts "Readability passed for #{checks.size} Ruby files (under 200 lines)."
+end

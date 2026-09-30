@@ -1,0 +1,339 @@
+heating:
+  name: Отопление
+  description: Проблемы с отоплением
+  constructor:
+    description_template: >-
+      {problem}. Наблюдаю эту проблему {location}. Прошу зарегистрировать обращение,
+      проверить работу отопления, зафиксировать результаты проверки и устранить выявленные
+      неисправности. Прошу сообщить о принятых мерах и сроках устранения проблемы. Также прошу
+      проверить правильность начислений за отопление и при наличии оснований произвести перерасчёт.
+    fields:
+      - key: problem
+        label: Что происходит?
+        options:
+          - key: no_heating
+            label: Нет отопления
+            text: Отопление не работает
+          - key: weak_heating
+            label: Батареи едва тёплые
+            text: Радиаторы отопления едва тёплые
+          - key: uneven_heating
+            label: Неравномерный нагрев
+            text: Радиаторы отопления нагреваются неравномерно
+          - key: other
+            label: Другое
+            text: ""
+            input_label: Опишите, что произошло
+      - key: location
+        label: Где возникла проблема?
+        options:
+          - key: whole_apartment
+            label: Во всей квартире
+            text: во всей квартире
+          - key: one_room
+            label: Жилая комната
+            text: в жилой комнате
+          - key: kitchen
+            label: Кухня
+            text: на кухне
+          - key: bathroom
+            label: Ванная
+            text: в ванной
+elevator:
+  name: Лифт
+  description: Проблемы с работой лифта
+  constructor:
+    description_template: >-
+      {problem}. Наблюдаю эту проблему в подъезде. Прошу зарегистрировать обращение,
+      проверить работу лифта и устранить выявленные неисправности. Прошу сообщить о результатах
+      проверки, принятых мерах и сроках устранения проблемы.
+    fields:
+      - key: problem
+        label: Что происходит?
+        options:
+          - key: not_working
+            label: Лифт не работает
+            text: Лифт не работает
+          - key: stops
+            label: Лифт застрял
+            text: Лифт застрял
+          - key: doors
+            label: Проблема с дверями
+            text: Есть неполадки в работе дверей лифта
+          - key: noise
+            label: Посторонний шум
+            text: При работе лифта слышен посторонний шум
+          - key: shaking
+            label: Тряска
+            text: При работе лифта ощущается тряска
+          - key: other
+            label: Другое
+            text: ""
+            input_label: Опишите, что произошло
+yard:
+  name: Двор
+  description: Проблемы во дворе и на придомовой территории
+  constructor:
+    description_template: >-
+      {problem}. Наблюдаю эту проблему {location}. Прошу зарегистрировать обращение,
+      осмотреть указанный участок и организовать необходимые работы. Прошу сообщить о результатах
+      проверки и сроках устранения проблемы.
+    fields:
+      - key: problem
+        label: Что происходит?
+        options:
+          - key: trash
+            label: Не убран мусор
+            text: Не убран мусор
+          - key: snow
+            label: Не убран снег
+            text: Не убран снег
+          - key: ice
+            label: Наледь
+            text: Образовалась наледь
+          - key: damaged_surface
+            label: Ямы или повреждения покрытия
+            text: Повреждено покрытие
+          - key: broken_equipment
+            label: Сломано оборудование
+            text: ""
+            input_label: Укажите, что сломано и в чём неисправность
+          - key: other
+            label: Другое
+            text: ""
+            input_label: Опишите, что произошло
+      - key: location
+        label: Где возникла проблема?
+        options:
+          - key: yard
+            label: Двор
+            text: во дворе
+          - key: entrance
+            label: У подъезда
+            text: у подъезда
+          - key: playground
+            label: Детская площадка
+            text: на детской площадке
+          - key: paths
+            label: Дорожки
+            text: на пешеходных дорожках
+leak:
+  name: Протечка
+  description: Протечки и затопления
+  constructor:
+    description_template: >-
+      {problem}. Наблюдаю эту проблему {location}. Прошу зарегистрировать обращение,
+      провести осмотр, установить причину появления воды или сырости и принять меры для её
+      устранения. Прошу зафиксировать результаты осмотра и сообщить о принятых мерах и сроках
+      выполнения работ.
+    fields:
+      - key: problem
+        label: Что происходит?
+        options:
+          - key: pipe
+            label: Протекает труба
+            text: Из трубы течёт вода
+          - key: ceiling
+            label: Вода с потолка
+            text: С потолка течёт вода
+          - key: wall
+            label: Мокнет стена
+            text: Намокает стена
+          - key: flooding
+            label: Затопление
+            text: Происходит затопление
+          - key: other
+            label: Другое
+            text: ""
+            input_label: Опишите, что произошло
+      - key: location
+        label: Где возникла проблема?
+        options:
+          - key: apartment
+            label: Квартира
+            text: в квартире
+          - key: entrance
+            label: Подъезд
+            text: в подъезде
+          - key: basement
+            label: Подвал
+            text: в подвале
+          - key: attic
+            label: Чердак
+            text: на чердаке
+hot_water:
+  name: Горячая вода
+  description: Проблемы с горячим водоснабжением
+  constructor:
+    description_template: >-
+      {problem}. Наблюдаю эту проблему {location}. Прошу зарегистрировать обращение,
+      проверить горячее водоснабжение, зафиксировать результаты проверки и устранить выявленные
+      проблемы. Прошу сообщить о принятых мерах и сроках устранения проблемы. Также прошу проверить
+      правильность начислений за горячую воду и при наличии оснований произвести перерасчёт.
+    fields:
+      - key: problem
+        label: Что происходит?
+        options:
+          - key: no_water
+            label: Нет горячей воды
+            text: Нет горячей воды
+          - key: lukewarm
+            label: Вода едва тёплая
+            text: Горячая вода едва тёплая
+          - key: low_pressure
+            label: Слабый напор
+            text: Слабый напор горячей воды
+          - key: dirty_water
+            label: Грязная вода
+            text: Горячая вода выглядит загрязнённой
+          - key: smell
+            label: Посторонний запах
+            text: У горячей воды посторонний запах
+          - key: other
+            label: Другое
+            text: ""
+            input_label: Опишите, что произошло
+      - key: location
+        label: Где возникла проблема?
+        options:
+          - key: whole_apartment
+            label: Во всей квартире
+            text: во всей квартире
+          - key: kitchen
+            label: Кухня
+            text: на кухне
+          - key: bathroom
+            label: Ванная
+            text: в ванной
+cold_water:
+  name: Холодная вода
+  description: Проблемы с холодным водоснабжением
+  constructor:
+    description_template: >-
+      {problem}. Наблюдаю эту проблему {location}. Прошу зарегистрировать обращение,
+      проверить холодное водоснабжение, зафиксировать результаты проверки и устранить выявленные
+      проблемы. Прошу сообщить о принятых мерах и сроках устранения проблемы. Также прошу проверить
+      правильность начислений за холодную воду и при наличии оснований произвести перерасчёт.
+    fields:
+      - key: problem
+        label: Что происходит?
+        options:
+          - key: no_water
+            label: Нет холодной воды
+            text: Нет холодной воды
+          - key: low_pressure
+            label: Слабый напор
+            text: Слабый напор холодной воды
+          - key: dirty_water
+            label: Грязная вода
+            text: Холодная вода выглядит загрязнённой
+          - key: smell
+            label: Посторонний запах
+            text: У холодной воды посторонний запах
+          - key: other
+            label: Другое
+            text: ""
+            input_label: Опишите, что произошло
+      - key: location
+        label: Где возникла проблема?
+        options:
+          - key: whole_apartment
+            label: Во всей квартире
+            text: во всей квартире
+          - key: kitchen
+            label: Кухня
+            text: на кухне
+          - key: bathroom
+            label: Ванная
+            text: в ванной
+          - key: toilet
+            label: Туалет
+            text: в туалете
+electricity:
+  name: Свет
+  description: Проблемы с электричеством и освещением
+  constructor:
+    description_template: >-
+      {problem}. Наблюдаю эту проблему {location}. Прошу зарегистрировать обращение,
+      проверить электроснабжение и освещение по указанной проблеме и устранить выявленные
+      неисправности. Прошу сообщить о результатах проверки, принятых мерах и сроках устранения
+      проблемы.
+    fields:
+      - key: problem
+        label: Что происходит?
+        options:
+          - key: no_electricity
+            label: Нет электричества
+            text: Нет электричества
+          - key: interruptions
+            label: Перебои с электричеством
+            text: Электричество подаётся с перебоями
+          - key: flickering
+            label: Мигает свет
+            text: Освещение мерцает
+          - key: no_lighting
+            label: Не работает освещение
+            text: Не работает освещение
+          - key: other
+            label: Другое
+            text: ""
+            input_label: Опишите, что произошло
+      - key: location
+        label: Где возникла проблема?
+        options:
+          - key: apartment
+            label: Квартира
+            text: в квартире
+          - key: entrance
+            label: Подъезд
+            text: в подъезде
+          - key: house
+            label: Во всём доме
+            text: во всём доме
+          - key: yard
+            label: Двор
+            text: во дворе
+            problem_keys: [flickering, no_lighting, other]
+other:
+  name: Другое
+  description: Другие проблемы дома
+  constructor:
+    description_template: >-
+      {problem}. Наблюдаю эту проблему {location}. Прошу зарегистрировать обращение,
+      проверить описанную ситуацию и принять необходимые меры. Прошу сообщить о результатах проверки
+      и сроках устранения проблемы.
+    fields:
+      - key: problem
+        label: С чем связана проблема?
+        options:
+          - key: property
+            label: Общее имущество
+            text: Возникла проблема с общим имуществом дома.
+            input_label: Опишите проблему с общим имуществом
+          - key: utility
+            label: Коммунальная услуга
+            text: Возникла проблема с коммунальной услугой.
+            input_label: Опишите проблему с коммунальной услугой
+          - key: cleaning
+            label: Уборка / содержание
+            text: Есть замечания к уборке или содержанию.
+            input_label: Опишите проблему с уборкой или содержанием
+          - key: other
+            label: Другое
+            text: Возникла другая проблема.
+            input_label: Опишите, что произошло
+      - key: location
+        label: Где возникла проблема?
+        options:
+          - key: apartment
+            label: Квартира
+            text: в квартире
+          - key: entrance
+            label: Подъезд
+            text: в подъезде
+          - key: house
+            label: Дом
+            text: в доме
+          - key: yard
+            label: Двор
+            text: во дворе

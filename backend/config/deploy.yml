@@ -1,0 +1,114 @@
+# Name of your application. Used to uniquely configure containers.
+service: hackaton-prod
+
+# Name of the container image (use your-user/app-name on external registries).
+image: hackaton
+
+# Deploy to these servers.
+servers:
+  web:
+    - <%= ENV.fetch("DEPLOY_HOST").inspect %>
+  # job:
+  #   hosts:
+  #     - 192.168.0.1
+  #   cmd: bin/jobs
+
+
+# proxy:
+#   ssl: true
+#   host: app.example.com
+
+# Allow time for initial PostgreSQL initialization and Rails db:prepare.
+deploy_timeout: 120
+
+proxy:
+  ssl: true
+  host: <%= ENV.fetch("API_HOST").inspect %>
+  buffering:
+    requests: true
+    # Five photos up to 10 MiB each, with room for multipart metadata.
+    max_request_body: 57671680
+
+# Where you keep your container images.
+registry:
+  # Alternatives: hub.docker.com / registry.digitalocean.com / ghcr.io / ...
+  server: localhost:5555
+
+  # Needed for authenticated registries.
+  # username: your-user
+
+  # Always use an access token rather than real password when possible.
+  # password:
+  #   - KAMAL_REGISTRY_PASSWORD
+
+# Inject ENV variables into containers (secrets come from .kamal/secrets).
+env:
+  secret:
+    - RAILS_MASTER_KEY
+    - MAX_BOT_TOKEN
+    - MAX_WEBHOOK_SECRET
+    - HACKATON_DATABASE_PASSWORD
+  clear:
+    # Shared demo house for authenticated MAX users without an available house.
+    # Disable after the hackathon and redeploy to revoke demo access.
+    DB_HOST: hackaton-prod-db
+    DB_NAME: <%= ENV.fetch("DB_NAME").inspect %>
+    DB_USER: <%= ENV.fetch("DB_USER", "hackaton").inspect %>
+    # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
+    # When you start using multiple servers, you should split out job processing to a dedicated
+    # machine.
+    SOLID_QUEUE_IN_PUMA: true
+
+    # Set number of processes dedicated to Solid Queue (default: 1)
+    # JOB_CONCURRENCY: 3
+
+    # Set number of cores available to the application on each server (default: 1).
+    # WEB_CONCURRENCY: 2
+
+    # Keep malformed JSON bodies out of Rails' debug parser logs.
+    RAILS_LOG_LEVEL: info
+
+# Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
+# "bin/kamal logs -r job" will tail logs from the first server in the job section.
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
+
+# Persist local Active Storage files and back up the volume off server.
+volumes:
+  - "hackaton_prod_storage:/rails/storage"
+
+
+# Configure the image builder.
+builder:
+  arch: amd64
+
+  # # Build image via remote server (useful for faster amd64 builds on arm64 computers)
+  # remote: ssh://docker@docker-builder-server
+  #
+  # # Pass arguments and secrets to the Docker build process
+  # args:
+  #   RUBY_VERSION: 4.0.2
+  # secrets:
+  #   - GITHUB_TOKEN
+  #   - RAILS_MASTER_KEY
+
+# Use a different ssh user than root
+ssh:
+  user: <%= ENV.fetch("SSH_USER", "root").inspect %>
+
+# PostgreSQL is reachable only within the kamal Docker network.
+accessories:
+  db:
+    image: postgres:17-alpine
+    host: <%= ENV.fetch("DEPLOY_HOST").inspect %>
+    env:
+      clear:
+        POSTGRES_USER: <%= ENV.fetch("DB_USER", "hackaton").inspect %>
+        POSTGRES_DB: <%= ENV.fetch("DB_NAME").inspect %>
+      secret:
+        - POSTGRES_PASSWORD:HACKATON_DATABASE_PASSWORD
+    directories:
+      - data:/var/lib/postgresql/data

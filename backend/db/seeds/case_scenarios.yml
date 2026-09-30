@@ -1,0 +1,204 @@
+new_resident:
+  case_type: heating
+  problem: weak_heating
+  description: Батареи в спальне едва тёплые третий день. Прошу проверить отопление и начисления, при наличии оснований сделать перерасчёт.
+  legacy_description: Батареи в комнате остаются холодными после ремонта
+  location: Квартира 42, спальня
+  visibility: public
+  subscribers: 2
+  photos: [snow.png]
+  actions: []
+
+emergency_in_progress:
+  case_type: elevator
+  problem: stops
+  description: Лифт застрял между этажами, внутри находится человек
+  location: Первый подъезд, между третьим и четвёртым этажами
+  visibility: public
+  emergency: true
+  subscribers: 8
+  photos: [elevator.png]
+  actions:
+    - status: in_progress
+      body: Аварийная бригада выехала. Поддерживаем связь с пассажиром, не пытайтесь открыть двери самостоятельно.
+    - role: resident
+      body: Связь с пассажиром есть, он чувствует себя нормально. Ждём бригаду у первого подъезда.
+
+private_action_required:
+  case_type: leak
+  problem: wall
+  description: На стене под потолком появились влажные пятна, обои вздулись. Нужен осмотр и поиск источника протечки.
+  legacy_description: Подтекает труба под раковиной, нужен осмотр сантехника
+  location: Квартира 42, комната
+  visibility: private
+  photos: [flood.png]
+  actions:
+    - status: in_progress
+      body: Сантехник осмотрит стену и проверит источник протечки, при необходимости свяжемся с соседями сверху.
+    - status: action_required
+      body: Уточните удобное время осмотра и увеличиваются ли влажные пятна на стене.
+    - role: resident
+      action: answer_clarification
+      body: Смогу принять сантехника завтра с 10 до 12 часов.
+    - action: request_clarification
+      body: Записали на завтра, 10:00–12:00. Уточните номер подъезда и работает ли домофон.
+
+closed_by_executor:
+  case_type: yard
+  problem: trash
+  description: У контейнерной площадки скопился мусор
+  location: Контейнерная площадка во дворе
+  visibility: public
+  subscribers: 5
+  photos: [garbage.png]
+  actions:
+    - status: in_progress
+      body: Передали заявку бригаде по уборке двора. Вывоз запланирован на утро.
+    - role: resident
+      body: Пожалуйста, заберите также пакеты за контейнерами, их не видно со стороны проезда.
+    - status: closed_by_executor
+      body: Мусор и пакеты вывезены, площадка подметена. Проверьте, пожалуйста, результат уборки.
+
+awaiting_recalculation:
+  case_type: cold_water
+  problem: low_pressure
+  description: Напор холодной воды восстановлен. Прошу перерасчёт за три дня, когда водой невозможно было пользоваться.
+  legacy_description: Напор холодной воды восстановлен, ожидаю перерасчёт
+  location: Квартира 42, кухня
+  visibility: private
+  actions:
+    - status: in_progress
+      body: Снижение давления подтвердилось. Сантехник проверяет фильтр на вводе в дом.
+    - status: closed_by_executor
+      body: Фильтр очищен, давление восстановлено. После подтверждения передадим сведения для перерасчёта.
+    - role: resident
+      body: Напор нормальный. Прошу учесть период с понедельника по среду включительно.
+    - action: confirm_repair
+      role: resident
+
+completed:
+  case_type: hot_water
+  problem: low_pressure
+  description: Слабый напор горячей воды на кухне
+  location: Квартира 42, кухня
+  visibility: public
+  subscribers: 1
+  actions:
+    - status: in_progress
+      body: Проверяем стояк горячего водоснабжения. Период нарушения зафиксировали для перерасчёта.
+    - role: resident
+      body: Спасибо. У соседей сверху такая же проблема, доступ в квартиру обеспечим.
+    - status: closed_by_executor
+      body: Засор устранён, напор восстановлен. Проверьте, пожалуйста.
+    - status: completed
+      role: resident
+      body: Напор снова нормальный. Подтверждаю выполнение работ, ожидаю перерасчёт.
+    - action: confirm_recalculation
+      role: resident
+
+new_neighbor:
+  case_type: hot_water
+  problem: lukewarm
+  creator: neighbor
+  description: Горячая вода едва тёплая второй день
+  location: Второй подъезд, верхние этажи
+  visibility: public
+  subscribers: 20
+  subscribed: true
+  actions: []
+
+neighbor_heating:
+  case_type: heating
+  problem: uneven_heating
+  creator: neighbor
+  description: В первом подъезде радиаторы нагреваются неравномерно. Просим проверить систему и сделать перерасчёт за период нарушения.
+  location: Первый подъезд, квартиры с 1 по 16
+  visibility: public
+  subscribers: 13
+  subscribed: true
+  actions:
+    - status: in_progress
+      body: Запланировали балансировку стояков на завтра. Отключение займёт около часа.
+    - role: resident
+      body: Передали соседям, доступ к радиаторам подготовим.
+
+neighbor_yard:
+  case_type: yard
+  problem: damaged_surface
+  creator: neighbor
+  description: На дорожке к детской площадке просела плитка, после дождя образуется глубокая лужа.
+  location: Дорожка между вторым подъездом и детской площадкой
+  visibility: public
+  subscribers: 8
+  subscribed: true
+  actions:
+    - status: in_progress
+      body: Мастер осмотрел участок. Заменим основание и уложим плитку в четверг.
+    - role: resident
+      body: Просим оградить участок на время работ, здесь часто ходят дети.
+
+neighbor_electricity:
+  case_type: electricity
+  problem: no_lighting
+  creator: neighbor
+  description: Не горят светильники на лестнице между вторым и четвёртым этажами.
+  location: Второй подъезд, лестничные площадки
+  visibility: public
+  subscribers: 5
+  subscribed: true
+  actions:
+    - status: in_progress
+      body: Электрик проверил линию и заменил неисправный датчик движения.
+    - role: resident
+      body: Свет появился, вечером проверим, включается ли он на всех этажах.
+    - status: closed_by_executor
+      body: Светильники работают, датчик настроен. Просим подтвердить результат вечером.
+
+neighbor_elevator:
+  case_type: elevator
+  problem: doors
+  creator: neighbor
+  description: Двери лифта закрываются только со второй попытки. Людей внутри не зажимает.
+  location: Второй подъезд, пассажирский лифт
+  visibility: public
+  subscribers: 3
+  actions:
+    - status: in_progress
+      body: Лифтовая служба проверит привод дверей сегодня до 18:00.
+    - role: resident
+      body: Проблема чаще возникает на первом этаже, передайте мастеру.
+
+neighbor_leak:
+  case_type: leak
+  problem: flooding
+  creator: neighbor
+  description: В подвале быстро прибывает вода, слышен шум из трубы. Вход в подвал закрыт.
+  location: Подвал под первым подъездом
+  visibility: public
+  emergency: true
+  subscribers: 2
+  actions:
+    - status: in_progress
+      body: Аварийная служба направлена. Пожалуйста, не спускайтесь в подвал и не трогайте электрооборудование.
+    - role: resident
+      body: Огородили вход, соседей предупредили. Бригаду встретим у первого подъезда.
+
+neighbor_cold_water:
+  case_type: cold_water
+  problem: dirty_water
+  creator: neighbor
+  description: После утреннего отключения холодная вода идёт мутной. Просим проверить качество воды.
+  location: Третий подъезд, квартиры на пятом этаже
+  visibility: public
+  subscribers: 1
+  actions: []
+
+neighbor_other:
+  case_type: other
+  problem: property
+  creator: neighbor
+  description: Доводчик входной двери не удерживает створку, дверь громко хлопает при закрывании.
+  location: Третий подъезд, входная дверь
+  visibility: public
+  subscribers: 0
+  actions: []

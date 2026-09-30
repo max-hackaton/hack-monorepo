@@ -1,0 +1,156 @@
+plugins:
+  - rubocop-rails
+
+inherit_gem:
+  rubocop-shopify: rubocop.yml
+
+AllCops:
+  Exclude:
+    - "db/*schema.rb"
+    - "db/migrate/**/*"
+    - "tmp/**/*"
+    - "vendor/**/*"
+
+Layout/DotPosition:
+  Enabled: true
+  EnforcedStyle: leading
+
+Layout/LineLength:
+  Enabled: true
+  Max: 120
+
+Layout/MultilineMethodCallIndentation:
+  Enabled: true
+  EnforcedStyle: indented
+
+Layout/IndentationConsistency:
+  Enabled: true
+  EnforcedStyle: normal
+
+Layout/IndentationWidth:
+  Enabled: true
+
+Layout/ArrayAlignment:
+  Enabled: true
+
+Layout/HashAlignment:
+  Enabled: true
+
+Layout/ArgumentAlignment:
+  Enabled: true
+
+Layout/FirstArrayElementIndentation:
+  Enabled: true
+
+Layout/FirstHashElementIndentation:
+  Enabled: true
+
+Layout/FirstArgumentIndentation:
+  Enabled: true
+
+Layout/EndAlignment:
+  Enabled: true
+
+Layout/BlockAlignment:
+  Enabled: true
+
+Layout/MultilineOperationIndentation:
+  Enabled: true
+
+Layout/ParameterAlignment:
+  Enabled: true
+
+Layout/RescueEnsureAlignment:
+  Enabled: true
+
+Layout/HeredocIndentation:
+  Enabled: true
+
+Layout/EmptyLinesAroundAccessModifier:
+  Enabled: true
+
+Layout/FirstMethodArgumentLineBreak:
+  Enabled: true
+
+Layout/MultilineMethodArgumentLineBreaks:
+  Enabled: true
+
+Layout/MultilineHashKeyLineBreaks:
+  Enabled: true
+
+Layout/MultilineArrayLineBreaks:
+  Enabled: true
+
+Layout/FirstArrayElementLineBreak:
+  Enabled: true
+
+Layout/MultilineMethodCallBraceLayout:
+  Enabled: true
+
+Layout/FirstHashElementLineBreak:
+  Enabled: true
+
+Layout/MultilineHashBraceLayout:
+  Enabled: true
+
+Layout/MultilineArrayBraceLayout:
+  Enabled: true
+
+Style/ClassAndModuleChildren:
+  Enabled: true
+
+Style/Lambda:
+  Enabled: true
+
+Style/MethodCallWithArgsParentheses:
+  Enabled: true
+
+Style/BlockDelimiters:
+  Enabled: true
+
+Style/WordArray:
+  Enabled: true
+
+Style/SymbolArray:
+  Enabled: true
+
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: double_quotes
+
+Style/TrailingCommaInArguments:
+  Enabled: true
+
+Style/TrailingCommaInArrayLiteral:
+  Enabled: true
+
+Style/TrailingCommaInHashLiteral:
+  Enabled: true
+
+# Choose short conditionals by readability; do not force either form everywhere.
+Style/IfUnlessModifier:
+  Enabled: false
+
+Style/GuardClause:
+  Enabled: false
+
+Style/IfUnlessModifierOfIfUnless:
+  Enabled: false
+
+Style/MultilineTernaryOperator:
+  Enabled: true
+
+Rails/RefuteMethods:
+  Exclude:
+    # This suite uses plain Minitest, without Rails assertion aliases.
+    - "test/lib/readability_check_test.rb"
+
+Rails/SkipsModelValidations:
+  Exclude:
+    # Scoped bulk writes: checked house selections, session revocation and setup data.
+    - "app/models/dispatch_house_selection.rb"
+    - "app/models/user_house.rb"
+    - "db/seeds/development.rb"
+    - "db/seeds/contractor_catalog.rb"
+    - "app/services/demo/scenario_timeline.rb"
+    - "test/integration/resident_case_lists_test.rb"
