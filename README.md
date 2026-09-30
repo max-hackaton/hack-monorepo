@@ -13,6 +13,7 @@
 - [Пошаговая проверка](#пошаговая-проверка)
 - [Известные ограничения](#известные-ограничения)
 - [Остановка и повторный запуск](#остановка-и-повторный-запуск)
+- [Проверки](#проверки)
 
 ## Основной сценарий
 
@@ -188,3 +189,15 @@ PostgreSQL хранит предметные данные и сессии в т�
 ## Остановка и повторный запуск
 
 Из корня репозитория выполните `docker compose down` для остановки и удаления контейнеров. Тома `postgres_data` и `rails_storage` при этом сохраняются. Повторно запустите стек командой `docker compose up --build -d`; Rails применит миграции и повторно выполнит seed, а сохранённые заявки и фото останутся доступны. Для просмотра проблем запуска используйте `docker compose logs rails` или `docker compose logs frontend`.
+
+## Проверки
+
+| Что | Адрес или файл |
+| --- | --- |
+| Бот в MAX | [@t482_hakaton_max_bot](https://max.ru/t482_hakaton_max_bot) |
+| Мини-приложение | Кнопка «Открыть приложение» в боте; адрес frontend: [app.smirnov-web.ru](https://app.smirnov-web.ru/) |
+| API | [api.smirnov-web.ru](https://api.smirnov-web.ru/) |
+| Swagger UI | [api.smirnov-web.ru/docs](https://api.smirnov-web.ru/docs) |
+| OpenAPI 3.1 | [Спецификация на сервере](https://api.smirnov-web.ru/docs/openapi.yaml), [копия в репозитории](backend/openapi.yaml) |
+| Сценарии проверки API | [submission/DATA-API.yaml](submission/DATA-API.yaml), 79 проверок для всех 48 операций OpenAPI |
+| Инструкция по проверке API | [submission/README.md](submission/README.md) |
