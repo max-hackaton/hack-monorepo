@@ -44,26 +44,61 @@
 Локально [`docker-compose.yml`](docker-compose.yml) запускает три сервиса: `frontend`, `rails` и `postgres`. Frontend отдаёт интерфейс, браузер отправляет запросы напрямую в Rails API, а Rails хранит записи и фотографии в двух отдельных томах. Nginx не проксирует API.
 
 ```mermaid
-flowchart LR
-    user["Житель или диспетчер<br/>Браузер / MAX Mini App"]
-    max["MAX<br/>Бот, чаты, Bot API"]
+%%{init: {
+  "flowchart": {
+    "nodeSpacing": 28,
+    "rankSpacing": 38,
+    "curve": "basis"
+  }
+}}%%
 
-    subgraph local["Локальный Docker Compose"]
-        frontend["frontend<br/>Nginx + React"]
-        rails["rails<br/>API и логика заявок"]
-        postgres["postgres<br/>PostgreSQL"]
-        db_volume[("postgres_data<br/>Записи и сессии")]
-        file_volume[("rails_storage<br/>Фотографии")]
+flowchart LR
+
+    U["Пользователь<br/>Житель/диспетчер"]
+
+    MAX["MAX<br/>Домовой чат<br/>Запуск Mini App"]
+
+    APP["Mini App<br/>React · TypeScript<br/>MAX Bridge<br/><br/>Дом · заявки<br/>карточка случая · профиль"]
+
+    subgraph BACK["Backend"]
+        direction TB
+
+        API["Rails API<br/>Сессии · авторизация<br/>роли · доступ к дому"]
+
+        DOMAIN["Доменная логика<br/>Case · CaseWorkflow · CaseEvent<br/>статусы · исполнитель · история"]
+
+        API --> DOMAIN
     end
 
-    user -->|"Загрузка интерфейса"| frontend
-    user -->|"Запросы /api, cookie max_session"| rails
-    rails -->|"SQL"| postgres
-    postgres --> db_volume
-    rails -->|"Active Storage"| file_volume
-    max -->|"Данные запуска Mini App"| user
-    max -->|"Webhook событий чата"| rails
-    rails -->|"Проверка членства и сообщения бота"| max
+    subgraph DATA["Данные и интеграции"]
+        direction TB
+
+        PG[("PostgreSQL<br/>Пользователи · дома<br/>случаи · сообщения · события")]
+
+        STORAGE["Active Storage<br/>Фото и вложения"]
+
+        MAXAPI["MAX Bot API<br/>Чаты · участники<br/>сообщения · webhook"]
+
+        BILLING["Перерасчёт<br/>Adapter  УК/РКО <br/> ДЕМО"]
+    end
+
+
+    U -->|"открывает"| MAX
+
+    MAX -->|"initData<br/>start_param"| APP
+
+    APP -->|"HTTPS · REST / JSON<br/>OpenAPI"| API
+
+    DOMAIN -->|"данные"| PG
+    DOMAIN -->|"файлы"| STORAGE
+    DOMAIN -->|"Bot API"| MAXAPI
+    DOMAIN -->|"запрос"| BILLING
+
+    MAXAPI -.->|"webhook"| API
+
+
+    classDef demo fill:#FFF3D6,stroke:#926300,color:#382800;
+    class BILLING demo;
 ```
 
 | Компонент | Назначение |
