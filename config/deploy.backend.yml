@@ -1,0 +1,65 @@
+service: hackaton-prod
+image: hackaton
+
+servers:
+  web:
+    - <%= ENV.fetch("DEPLOY_HOST").inspect %>
+
+proxy:
+  ssl: true
+  host: <%= ENV.fetch("API_HOST").inspect %>
+  buffering:
+    requests: true
+    max_request_body: 57671680
+
+deploy_timeout: 120
+
+registry:
+  server: localhost:5555
+
+env:
+  secret:
+    - RAILS_MASTER_KEY
+    - MAX_BOT_TOKEN
+    - MAX_WEBHOOK_SECRET
+    - HACKATON_DATABASE_PASSWORD
+  clear:
+    RAILS_ENV: production
+    DB_HOST: hackaton-prod-db
+    DB_NAME: <%= ENV.fetch("DB_NAME").inspect %>
+    DB_USER: <%= ENV.fetch("DB_USER").inspect %>
+    FRONTEND_URL: <%= "https://#{ENV.fetch('FRONTEND_HOST')}".inspect %>
+    API_HOST: <%= ENV.fetch("API_HOST").inspect %>
+    SOLID_QUEUE_IN_PUMA: true
+    RAILS_LOG_LEVEL: info
+
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
+
+volumes:
+  - "hackaton_prod_storage:/rails/storage"
+
+builder:
+  arch: amd64
+  context: backend
+  dockerfile: backend/Dockerfile
+
+ssh:
+  user: <%= ENV.fetch("SSH_USER").inspect %>
+  port: <%= Integer(ENV.fetch("SSH_PORT", "22")) %>
+
+accessories:
+  db:
+    image: postgres:17-alpine
+    host: <%= ENV.fetch("DEPLOY_HOST").inspect %>
+    env:
+      clear:
+        POSTGRES_USER: <%= ENV.fetch("DB_USER").inspect %>
+        POSTGRES_DB: <%= ENV.fetch("DB_NAME").inspect %>
+      secret:
+        - POSTGRES_PASSWORD:HACKATON_DATABASE_PASSWORD
+    directories:
+      - data:/var/lib/postgresql/data

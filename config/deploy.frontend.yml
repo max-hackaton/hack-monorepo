@@ -1,0 +1,27 @@
+service: hackaton-frontend
+image: hackaton-frontend
+
+servers:
+  web:
+    - <%= ENV.fetch("DEPLOY_HOST").inspect %>
+
+proxy:
+  ssl: true
+  host: <%= ENV.fetch("FRONTEND_HOST").inspect %>
+  app_port: 80
+  healthcheck:
+    path: /
+
+registry:
+  server: localhost:5555
+
+builder:
+  arch: amd64
+  context: frontend
+  dockerfile: frontend/Dockerfile
+  args:
+    VITE_API_URL: <%= "https://#{ENV.fetch('API_HOST')}".inspect %>
+
+ssh:
+  user: <%= ENV.fetch("SSH_USER").inspect %>
+  port: <%= Integer(ENV.fetch("SSH_PORT", "22")) %>
