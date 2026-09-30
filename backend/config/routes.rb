@@ -3,11 +3,10 @@
 Rails.application.routes.draw do
   post "/max/webhook", to: "max/webhooks#create"
 
-  if Rails.env.development? || Rails.env.test?
-    mount Rswag::Ui::Engine => "/docs"
-    mount Rswag::Api::Engine => "/docs",
-      constraints: ->(request) { request.path == "/docs/openapi.yaml" }
-  end
+  root to: redirect("/docs", status: 302)
+  mount Rswag::Ui::Engine => "/docs"
+  mount Rswag::Api::Engine => "/docs",
+    constraints: ->(request) { request.path == "/docs/openapi.yaml" }
 
   namespace :api do
     namespace :dispatch do

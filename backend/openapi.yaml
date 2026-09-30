@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: MAX Mini App API
+  title: Домочатцы API
   version: 1.0.0
   description: >-
     API for the MAX Mini App, a web application that runs inside the MAX mobile app. It uses a
@@ -13,7 +13,26 @@ info:
     MAX users membership in the demo house's management company on login and session restoration.
     MAX errors return 503 without granting fallback access. The selected resident or dispatcher
     role is stored in the server session; dispatcher availability requires company membership.
+servers:
+  - url: /
+    description: API на текущем сервере (Swagger)
+  - url: https://api.smirnov-web.ru
+    description: Production
 paths:
+  /up:
+    get:
+      operationId: getHealth
+      summary: Check application availability
+      security: []
+      responses:
+        '200':
+          description: Application booted successfully; does not check every external dependency
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Application failed its health check
   /max/webhook:
     post:
       operationId: receiveMaxBotUpdate

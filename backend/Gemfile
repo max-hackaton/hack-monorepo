@@ -37,11 +37,8 @@ gem "rack-cors", "~> 3.0"
 
 gem "max_api_client", git: "https://github.com/max-hackaton/max_api_client.git"
 
-group :development, :test do
-  # Serve Swagger UI using the existing OpenAPI contract (no RSpec dependency).
-  gem "rswag-api", "~> 2.17"
-  gem "rswag-ui", "~> 2.17"
-end
+gem "rswag-api", "~> 2.17"
+gem "rswag-ui", "~> 2.17"
 
 group :tools do
   # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
