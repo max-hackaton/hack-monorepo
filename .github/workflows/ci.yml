@@ -137,8 +137,10 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           printf '%s\n' 'Host *' '  StrictHostKeyChecking yes' '  IdentitiesOnly yes' > ~/.ssh/config
       - name: Deploy Rails
-        run: bin/kamal deploy -c config/deploy.backend.yml
+        run: cicd/bin/kamal setup -c cicd/config/deploy.backend.yml
+      - name: Register MAX webhook
+        run: cicd/bin/kamal app exec -c cicd/config/deploy.backend.yml --reuse "bin/rails max:subscribe"
       - name: Seed database
-        run: bin/kamal app exec --reuse "bin/rails db:seed"
+        run: cicd/bin/kamal app exec -c cicd/config/deploy.backend.yml --reuse "bin/rails db:seed"
       - name: Deploy frontend
-        run: bin/kamal deploy -c config/deploy.frontend.yml
+        run: cicd/bin/kamal deploy -c cicd/config/deploy.frontend.yml

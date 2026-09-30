@@ -1,6 +1,9 @@
 service: hackaton-frontend
 image: hackaton-frontend
 
+secrets_path: cicd/.kamal/secrets
+hooks_path: cicd/.kamal/hooks
+
 servers:
   web:
     - <%= ENV.fetch("DEPLOY_HOST").inspect %>
