@@ -79,7 +79,8 @@ COPY --chown=rails:rails --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --chown=rails:rails --from=build /rails /rails
 
 # Empty volumes inherit these directories and their ownership from the image.
-RUN install -d -o rails -g rails /rails/storage /rails/log /rails/tmp /rails/tmp/pids
+RUN chmod 0755 /rails/bin/docker-entrypoint /rails/bin/rails /rails/bin/thrust && \
+    install -d -o rails -g rails /rails/storage /rails/log /rails/tmp /rails/tmp/pids
 
 USER 1000:1000
 
