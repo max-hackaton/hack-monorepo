@@ -137,6 +137,7 @@ POSTGRES_DB=hackaton_development
 ```sh
 docker compose up --build -d
 ```
+При ошибке Permission denied запустите `sudo docker compose up --build -d`
 
 При запуске Rails выполняет `db:prepare db:seed`: создаёт или обновляет схему и загружает демонстрационные данные. Дождитесь состояния `healthy` у трёх сервисов (`docker compose ps`). Frontend: <http://localhost:3000>, API: <http://localhost:9000>, проверка API: <http://localhost:9000/up>, документация API в режиме разработки: <http://localhost:9000/docs>.
 
