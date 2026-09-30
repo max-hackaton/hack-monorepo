@@ -1,0 +1,24 @@
+{
+  "description": "Синтетические данные для воспроизводимой проверки Домочатцы API. Каждый запуск создаёт новые заявки в отдельном тестовом доме.",
+  "public_case": {
+    "case_type_key": "heating",
+    "problem_key": "weak_heating",
+    "description": "Проверка API ${run_id}: радиаторы в тестовой квартире недостаточно тёплые.",
+    "location_details": "Тестовая квартира 42, спальня",
+    "visibility": "public",
+    "is_emergency": false,
+    "violation_started_at": "${violation_started_at}"
+  },
+  "private_case": {
+    "case_type_key": "yard",
+    "problem_key": "trash",
+    "description": "Проверка API ${run_id}: тестовая заявка с фотографией.",
+    "location_details": "Тестовая контейнерная площадка",
+    "visibility": "private",
+    "is_emergency": "false"
+  },
+  "resident_message": {"body": "Тестовое сообщение жителя: доступ для осмотра согласован."},
+  "dispatcher_message": {"body": "Тестовое сообщение диспетчера: заявка принята в работу."},
+  "clarification_question": "Подтвердите тестовое время осмотра: с 10 до 12 часов.",
+  "clarification_answer": "Подтверждаю тестовое время осмотра: с 10 до 12 часов."
+}
