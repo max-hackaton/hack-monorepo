@@ -5,7 +5,8 @@ require "active_support/core_ext/integer/time"
 Rails.application.configure do
   config.x.auth.origins = [
     ENV.fetch("FRONTEND_URL", "https://app.smirnov-web.ru"),
-  ].freeze
+    "https://#{ENV.fetch('API_HOST', 'api.smirnov-web.ru')}",
+  ].uniq.freeze
   # MAX embeds the app cross-site; partitioning keeps sessions usable when third-party cookies are blocked.
   config.x.auth.cookie_options = {
     httponly: true, secure: true, same_site: :none, partitioned: true, path: "/",
