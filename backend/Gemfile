@@ -41,13 +41,9 @@ group :development, :test do
   # Serve Swagger UI using the existing OpenAPI contract (no RSpec dependency).
   gem "rswag-api", "~> 2.17"
   gem "rswag-ui", "~> 2.17"
+end
 
-  # Validate the OpenAPI document and real API response schemas in tests.
-  gem "json_schemer", "~> 2.5"
-
-  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
-  gem "debug", platforms: [:mri, :windows], require: "debug/prelude"
-
+group :tools do
   # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
   gem "bundler-audit", require: false
 

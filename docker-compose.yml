@@ -21,7 +21,7 @@ services:
     build:
       context: ./backend
       args:
-        BUNDLE_WITHOUT: ""
+        BUNDLE_WITHOUT: tools
     environment:
       RAILS_ENV: development
       DB_HOST: postgres

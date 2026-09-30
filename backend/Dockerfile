@@ -21,7 +21,7 @@ RUN apt-get update -qq && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Set production environment variables and enable jemalloc for reduced memory usage and latency.
-ARG BUNDLE_WITHOUT=development
+ARG BUNDLE_WITHOUT=development:test:tools
 ENV RAILS_ENV="production" \
     MAX_REQUEST_BODY="57671680" \
     BUNDLE_DEPLOYMENT="1" \
@@ -30,7 +30,7 @@ ENV RAILS_ENV="production" \
     LD_PRELOAD="/usr/local/lib/libjemalloc.so"
 
 # Throw-away build stage to reduce size of final image
-FROM base AS build
+FROM base AS gems
 
 # Install packages needed to build gems
 RUN apt-get update -qq && \
@@ -40,8 +40,20 @@ RUN apt-get update -qq && \
 # Install application gems
 COPY Gemfile Gemfile.lock ./
 
-RUN bundle install && \
-    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
+ARG RUBY_VERSION
+ARG TARGETARCH
+
+# Keep installed gems between builds, including when Gemfile.lock changes.
+RUN --mount=type=cache,id=domochattsy-bundle-${RUBY_VERSION}-${TARGETARCH}-${BUNDLE_WITHOUT},target=/usr/local/bundle,sharing=locked \
+    (bundle check || bundle install --jobs 4) && \
+    cp -a "${BUNDLE_PATH}" /opt/bundle
+
+FROM gems AS build
+
+# Cache mounts are not part of an image; copy the installed gems into a layer.
+COPY --from=gems /opt/bundle /usr/local/bundle
+
+RUN rm -rf /opt/bundle ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     # -j 1 disable parallel compilation to avoid a QEMU bug: https://github.com/rails/bootsnap/issues/495
     bundle exec bootsnap precompile -j 1 --gemfile
 
@@ -67,8 +79,7 @@ COPY --chown=rails:rails --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --chown=rails:rails --from=build /rails /rails
 
 # Empty volumes inherit these directories and their ownership from the image.
-RUN mkdir -p /rails/storage /rails/log /rails/tmp/pids && \
-    chown -R rails:rails /rails/storage /rails/log /rails/tmp
+RUN install -d -o rails -g rails /rails/storage /rails/log /rails/tmp /rails/tmp/pids
 
 USER 1000:1000
 
