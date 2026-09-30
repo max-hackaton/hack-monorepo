@@ -56,4 +56,4 @@ group :tools do
 end
 
 # Rails 8.1 passes a positional options hash to JSON.parse (incompatible with JSON 3).
-gem "json", "< 3"
+gem "json", "< 4"
