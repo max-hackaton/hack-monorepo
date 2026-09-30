@@ -1,79 +1,98 @@
-schema_version: '1.0'
+schemaVersion: '1.0'
 solution:
   name: Домочатцы
-  team_id: max-hackaton
-base_url: https://api.smirnov-web.ru
-openapi_file: openapi.yaml
-test_data_file: test-data.json
-accounts_file: accounts.private.json
-variables:
-  origin: https://app.smirnov-web.ru
-authentication:
-  type: cookie
-  name: max_session
-  roles:
-  - resident
-  - neighbor
-  - dispatcher
+  teamId: max-hackaton
+api:
+  baseUrl: https://api.smirnov-web.ru
+  openapi: openapi.yaml
+  defaultHeaders:
+    Accept: application/json
 checks:
 - id: health
-  description: Доступность приложения по HTTPS
-  required: true
-  role: anonymous
-  operation_id: getHealth
+  name: Доступность приложения по HTTPS
+  role: public
+  method: GET
+  path: /up
   request:
-    method: GET
-    path: /up
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: text/html
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: text/html
+    contentType: text/html
+  timeoutMs: 60000
+  repeatable: true
 - id: unauthenticated
-  description: Защищённый метод требует сессию
-  required: true
-  role: anonymous
-  operation_id: getCurrentUser
+  name: Защищённый метод требует сессию
+  role: public
+  method: GET
+  path: /api/auth/session
   request:
-    method: GET
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 401
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/Error
-    required_fields: &id002
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/Error
+      - type: object
+        required:
+        - error
+        properties:
+          error:
+            type: object
+            required:
+            - code
+            properties:
+              code:
+                const: unauthenticated
+    requiredFields:
     - error
-    assertions:
-    - pointer: /error/code
-      equals: unauthenticated
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - health
 - id: session_resident
-  description: 'Проверка тестовой сессии: resident'
-  required: true
+  name: 'Проверка тестовой сессии: resident'
   role: resident
-  operation_id: getCurrentUser
+  method: GET
+  path: /api/auth/session
   request:
-    method: GET
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CurrentUser
-    required_fields: &id001
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CurrentUser
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${accounts.resident.user_id}
+      - type: object
+        required:
+        - house
+        properties:
+          house:
+            type: object
+            required:
+            - id
+            properties:
+              id:
+                const: ${fixture.house_id}
+    requiredFields:
     - id
     - max_user_id
     - first_name
@@ -82,299 +101,468 @@ checks:
     - house
     - active_role
     - available_roles
-    assertions:
-    - pointer: /id
-      equals: ${accounts.resident.user_id}
-    - pointer: /house/id
-      equals: ${fixture.house_id}
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - unauthenticated
+  extract:
+    house_id: $.house.id
 - id: role_resident
-  description: 'Выбор режима: resident'
-  required: true
+  name: 'Выбор режима: resident'
   role: resident
-  operation_id: selectSessionRole
+  method: PATCH
+  path: /api/auth/session
   request:
-    method: PATCH
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       role: resident
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CurrentUser
-    required_fields: *id001
-    assertions:
-    - pointer: /active_role
-      equals: resident
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CurrentUser
+      - type: object
+        required:
+        - active_role
+        properties:
+          active_role:
+            const: resident
+    requiredFields:
+    - id
+    - max_user_id
+    - first_name
+    - last_name
+    - photo_url
+    - house
+    - active_role
+    - available_roles
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - session_resident
 - id: session_neighbor
-  description: 'Проверка тестовой сессии: neighbor'
-  required: true
+  name: 'Проверка тестовой сессии: neighbor'
   role: neighbor
-  operation_id: getCurrentUser
+  method: GET
+  path: /api/auth/session
   request:
-    method: GET
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CurrentUser
-    required_fields: *id001
-    assertions:
-    - pointer: /id
-      equals: ${accounts.neighbor.user_id}
-    - pointer: /house/id
-      equals: ${fixture.house_id}
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CurrentUser
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${accounts.neighbor.user_id}
+      - type: object
+        required:
+        - house
+        properties:
+          house:
+            type: object
+            required:
+            - id
+            properties:
+              id:
+                const: ${fixture.house_id}
+    requiredFields:
+    - id
+    - max_user_id
+    - first_name
+    - last_name
+    - photo_url
+    - house
+    - active_role
+    - available_roles
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - role_resident
 - id: role_neighbor
-  description: 'Выбор режима: resident'
-  required: true
+  name: 'Выбор режима: resident'
   role: neighbor
-  operation_id: selectSessionRole
+  method: PATCH
+  path: /api/auth/session
   request:
-    method: PATCH
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       role: resident
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CurrentUser
-    required_fields: *id001
-    assertions:
-    - pointer: /active_role
-      equals: resident
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CurrentUser
+      - type: object
+        required:
+        - active_role
+        properties:
+          active_role:
+            const: resident
+    requiredFields:
+    - id
+    - max_user_id
+    - first_name
+    - last_name
+    - photo_url
+    - house
+    - active_role
+    - available_roles
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - session_neighbor
 - id: session_dispatcher
-  description: 'Проверка тестовой сессии: dispatcher'
-  required: true
+  name: 'Проверка тестовой сессии: dispatcher'
   role: dispatcher
-  operation_id: getCurrentUser
+  method: GET
+  path: /api/auth/session
   request:
-    method: GET
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CurrentUser
-    required_fields: *id001
-    assertions:
-    - pointer: /id
-      equals: ${accounts.dispatcher.user_id}
-    - pointer: /house/id
-      equals: ${fixture.house_id}
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CurrentUser
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${accounts.dispatcher.user_id}
+      - type: object
+        required:
+        - house
+        properties:
+          house:
+            type: object
+            required:
+            - id
+            properties:
+              id:
+                const: ${fixture.house_id}
+    requiredFields:
+    - id
+    - max_user_id
+    - first_name
+    - last_name
+    - photo_url
+    - house
+    - active_role
+    - available_roles
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - role_neighbor
 - id: role_dispatcher
-  description: 'Выбор режима: dispatcher'
-  required: true
+  name: 'Выбор режима: dispatcher'
   role: dispatcher
-  operation_id: selectSessionRole
+  method: PATCH
+  path: /api/auth/session
   request:
-    method: PATCH
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       role: dispatcher
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CurrentUser
-    required_fields: *id001
-    assertions:
-    - pointer: /active_role
-      equals: dispatcher
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CurrentUser
+      - type: object
+        required:
+        - active_role
+        properties:
+          active_role:
+            const: dispatcher
+    requiredFields:
+    - id
+    - max_user_id
+    - first_name
+    - last_name
+    - photo_url
+    - house
+    - active_role
+    - available_roles
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - session_dispatcher
 - id: houses
-  description: Дома жителя
-  required: true
+  name: Дома жителя
   role: resident
-  operation_id: listDiscoveredHouses
+  method: GET
+  path: /api/houses
   request:
-    method: GET
-    path: /api/houses
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/HousesResponse
-    required_fields:
+    requiredFields:
     - houses
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - role_dispatcher
 - id: select_house
-  description: Выбор тестового дома
-  required: true
+  name: Выбор тестового дома
   role: resident
-  operation_id: selectSessionHouse
+  method: PUT
+  path: /api/auth/session/house
   request:
-    method: PUT
-    path: /api/auth/session/house
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
-      house_id: ${fixture.house_id}
+      house_id: ${house_id}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CurrentUser
-    required_fields: *id001
-    assertions:
-    - pointer: /house/id
-      equals: ${fixture.house_id}
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CurrentUser
+      - type: object
+        required:
+        - house
+        properties:
+          house:
+            type: object
+            required:
+            - id
+            properties:
+              id:
+                const: ${fixture.house_id}
+    requiredFields:
+    - id
+    - max_user_id
+    - first_name
+    - last_name
+    - photo_url
+    - house
+    - active_role
+    - available_roles
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - houses
 - id: home
-  description: Лента выбранного дома
-  required: true
+  name: Лента выбранного дома
   role: resident
-  operation_id: getHome
+  method: GET
+  path: /api/home
   request:
-    method: GET
-    path: /api/home
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/HomeResponse
-    required_fields:
+    requiredFields:
     - viewer
     - house
     - active_cases_count
     - cases
     - next_cursor
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - select_house
 - id: case_types
-  description: Каталог категорий
-  required: true
+  name: Каталог категорий
   role: resident
-  operation_id: listCaseTypes
+  method: GET
+  path: /api/case-types
   request:
-    method: GET
-    path: /api/case-types
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/CaseTypesResponse
-    required_fields: &id010
+    requiredFields:
     - case_types
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - home
 - id: case_type
-  description: Конструктор заявки на отопление
-  required: true
+  name: Конструктор заявки на отопление
   role: resident
-  operation_id: getCaseType
+  method: GET
+  path: /api/case-types/{key}
   request:
-    method: GET
-    path: /api/case-types/{key}
-    path_parameters:
+    path:
       key: heating
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/CaseType
-    required_fields: &id011
+    requiredFields:
     - key
     - name
     - description
     - constructor
     - steps
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - case_types
 - id: invalid_origin
-  description: Запись с постороннего Origin запрещена
-  required: true
+  name: Запись с постороннего Origin запрещена
   role: resident
-  operation_id: createCase
+  method: POST
+  path: /api/cases
   request:
-    method: POST
-    path: /api/cases
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
       Origin: https://untrusted.example.invalid
       Content-Type: application/json
-    body: ${data.public_case}
+    body:
+      case_type_key: heating
+      problem_key: weak_heating
+      description: 'Проверка API DATA-API: радиаторы в тестовой квартире недостаточно тёплые.'
+      location_details: Тестовая квартира 42, спальня
+      visibility: public
+      is_emergency: false
+      violation_started_at: '2026-09-27T00:00:00Z'
   expected:
-    status_codes:
+    statusCodes:
     - 403
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/Error
-    required_fields: *id002
-    assertions:
-    - pointer: /error/code
-      equals: invalid_origin
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/Error
+      - type: object
+        required:
+        - error
+        properties:
+          error:
+            type: object
+            required:
+            - code
+            properties:
+              code:
+                const: invalid_origin
+    requiredFields:
+    - error
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - case_type
 - id: create_public
-  description: Создание публичной заявки
-  required: true
+  name: Создание публичной заявки
   role: resident
-  operation_id: createCase
+  method: POST
+  path: /api/cases
   request:
-    method: POST
-    path: /api/cases
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
-    body: ${data.public_case}
+    body:
+      case_type_key: heating
+      problem_key: weak_heating
+      description: 'Проверка API DATA-API: радиаторы в тестовой квартире недостаточно тёплые.'
+      location_details: Тестовая квартира 42, спальня
+      visibility: public
+      is_emergency: false
+      violation_started_at: '2026-09-27T00:00:00Z'
   expected:
-    status_codes:
+    statusCodes:
     - 201
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: &id003
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: new
+      - type: object
+        required:
+        - is_creator
+        properties:
+          is_creator:
+            const: true
+      - type: object
+        required:
+        - house
+        properties:
+          house:
+            type: object
+            required:
+            - id
+            properties:
+              id:
+                const: ${fixture.house_id}
+    requiredFields:
     - id
     - case_type
     - title
@@ -396,376 +584,527 @@ checks:
     - problem_key
     - classification
     - workflow
-    assertions:
-    - pointer: /current_step/status_key
-      equals: new
-    - pointer: /is_creator
-      equals: true
-    - pointer: /house/id
-      equals: ${fixture.house_id}
-  extract: &id007
-    case_id: /id
-    case_step: /current_step/key
-    case_version: /workflow/version
-    classification_version: /classification/version
-    completed_step_key: /current_step/key
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - invalid_origin
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
 - id: own_cases
-  description: Список собственных активных заявок
-  required: true
+  name: Список собственных активных заявок
   role: resident
-  operation_id: listCases
+  method: GET
+  path: /api/cases
   request:
-    method: GET
-    path: /api/cases
-    path_parameters: {}
+    path: {}
     query:
       scope: mine
       status: active
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CasesResponse
-    required_fields: &id005
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CasesResponse
+      - type: object
+        required:
+        - cases
+        properties:
+          cases:
+            type: array
+            minItems: 1
+            prefixItems:
+            - type: object
+              required:
+              - id
+              properties:
+                id:
+                  const: ${case_id}
+    requiredFields:
     - cases
     - next_cursor
-    assertions:
-    - pointer: /cases/0/id
-      equals: ${case_id}
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - create_public
 - id: neighbor_public
-  description: Сосед видит публичную заявку без личного workflow
-  required: true
+  name: Сосед видит публичную заявку без личного workflow
   role: neighbor
-  operation_id: getCase
+  method: GET
+  path: /api/cases/{id}
   request:
-    method: GET
-    path: /api/cases/{id}
-    path_parameters:
+    path:
       id: ${case_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /workflow
-      equals: null
-    - pointer: /is_creator
-      equals: false
-- id: confirm_first
-  description: Подтверждение соседом; повтор не увеличивает счётчик
-  required: true
-  role: neighbor
-  operation_id: confirmCase
-  request:
-    method: POST
-    path: /api/cases/{id}/confirmations
-    path_parameters:
-      id: ${case_id}
-    query: {}
-    headers:
-      Accept: application/json
-      Origin: ${origin}
-  expected:
-    status_codes:
-    - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/ConfirmationResponse
-    required_fields: &id004
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - workflow
+        properties:
+          workflow:
+            const: null
+      - type: object
+        required:
+        - is_creator
+        properties:
+          is_creator:
+            const: false
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
     - confirmation_count
     - confirmed_by_me
     - can_confirm
-    assertions:
-    - pointer: /confirmation_count
-      equals: 1
-    - pointer: /confirmed_by_me
-      equals: true
-- id: confirm_repeat
-  description: Подтверждение соседом; повтор не увеличивает счётчик
-  required: true
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - own_cases
+- id: confirm_first
+  name: Подтверждение соседом; повтор не увеличивает счётчик
   role: neighbor
-  operation_id: confirmCase
+  method: POST
+  path: /api/cases/{id}/confirmations
   request:
-    method: POST
-    path: /api/cases/{id}/confirmations
-    path_parameters:
+    path:
       id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/ConfirmationResponse
-    required_fields: *id004
-    assertions:
-    - pointer: /confirmation_count
-      equals: 1
-    - pointer: /confirmed_by_me
-      equals: true
-- id: subscriptions
-  description: Заявка появилась в подписках соседа
-  required: true
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/ConfirmationResponse
+      - type: object
+        required:
+        - confirmation_count
+        properties:
+          confirmation_count:
+            const: 1
+      - type: object
+        required:
+        - confirmed_by_me
+        properties:
+          confirmed_by_me:
+            const: true
+    requiredFields:
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - neighbor_public
+- id: confirm_repeat
+  name: Подтверждение соседом; повтор не увеличивает счётчик
   role: neighbor
-  operation_id: listCases
+  method: POST
+  path: /api/cases/{id}/confirmations
   request:
-    method: GET
-    path: /api/cases
-    path_parameters: {}
+    path:
+      id: ${case_id}
+    query: {}
+    headers:
+      Accept: application/json
+      Origin: https://app.smirnov-web.ru
+  expected:
+    statusCodes:
+    - 200
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/ConfirmationResponse
+      - type: object
+        required:
+        - confirmation_count
+        properties:
+          confirmation_count:
+            const: 1
+      - type: object
+        required:
+        - confirmed_by_me
+        properties:
+          confirmed_by_me:
+            const: true
+    requiredFields:
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - confirm_first
+- id: subscriptions
+  name: Заявка появилась в подписках соседа
+  role: neighbor
+  method: GET
+  path: /api/cases
+  request:
+    path: {}
     query:
       scope: subscriptions
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CasesResponse
-    required_fields: *id005
-    assertions:
-    - pointer: /cases/0/id
-      equals: ${case_id}
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CasesResponse
+      - type: object
+        required:
+        - cases
+        properties:
+          cases:
+            type: array
+            minItems: 1
+            prefixItems:
+            - type: object
+              required:
+              - id
+              properties:
+                id:
+                  const: ${case_id}
+    requiredFields:
+    - cases
+    - next_cursor
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - confirm_repeat
 - id: neighbor_cannot_act
-  description: Сосед не управляет workflow автора
-  required: true
+  name: Сосед не управляет workflow автора
   role: neighbor
-  operation_id: performResidentCaseAction
+  method: POST
+  path: /api/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/cases/{case_id}/actions
-    path_parameters: &id006
+    path:
       case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: confirm_repair
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
   expected:
-    status_codes:
+    statusCodes:
     - 404
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/Error
-    required_fields: *id002
+    requiredFields:
+    - error
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - subscriptions
 - id: create_private_photo
-  description: Создание приватной заявки с фотографией
-  required: true
+  name: Создание приватной заявки с фотографией
   role: resident
-  operation_id: createCase
+  method: POST
+  path: /api/cases
   request:
-    method: POST
-    path: /api/cases
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
-    multipart:
-      fields: ${data.private_case}
-      files:
-      - field: photos[]
-        path: fixtures/photo.png
-        content_type: image/png
+      Origin: https://app.smirnov-web.ru
+      Content-Type: multipart/form-data
+    body:
+      case_type_key: yard
+      problem_key: trash
+      description: 'Проверка API DATA-API: тестовая заявка с фотографией.'
+      location_details: Тестовая контейнерная площадка
+      visibility: private
+      is_emergency: 'false'
+      photos[]: '@fixtures/photo.png'
   expected:
-    status_codes:
+    statusCodes:
     - 201
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /visibility
-      equals: private
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - visibility
+        properties:
+          visibility:
+            const: private
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - neighbor_cannot_act
   extract:
-    private_case_id: /id
-    photo_id: /photos/0/id
-    private_step: /current_step/key
-    private_version: /workflow/version
+    private_case_id: $.id
+    photo_id: $.photos[0].id
+    private_step: $.current_step.key
+    private_version: $.workflow.version
 - id: photo
-  description: Автор скачивает фотографию
-  required: true
+  name: Автор скачивает фотографию
   role: resident
-  operation_id: getCasePhoto
+  method: GET
+  path: /api/cases/{case_id}/photos/{id}
   request:
-    method: GET
-    path: /api/cases/{case_id}/photos/{id}
-    path_parameters:
+    path:
       case_id: ${private_case_id}
       id: ${photo_id}
     query: {}
     headers:
       Accept: image/jpeg
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: image/png
+    contentType: image/png
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - create_private_photo
 - id: private_hidden
-  description: Приватная заявка недоступна соседу
-  required: true
+  name: Приватная заявка недоступна соседу
   role: neighbor
-  operation_id: getCase
+  method: GET
+  path: /api/cases/{id}
   request:
-    method: GET
-    path: /api/cases/{id}
-    path_parameters:
+    path:
       id: ${private_case_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 404
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/Error
-    required_fields: *id002
+    requiredFields:
+    - error
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - photo
 - id: private_photo_hidden
-  description: Приватное фото недоступно соседу
-  required: true
+  name: Приватное фото недоступно соседу
   role: neighbor
-  operation_id: getCasePhoto
+  method: GET
+  path: /api/cases/{case_id}/photos/{id}
   request:
-    method: GET
-    path: /api/cases/{case_id}/photos/{id}
-    path_parameters:
+    path:
       case_id: ${private_case_id}
       id: ${photo_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 404
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/Error
-    required_fields: *id002
+    requiredFields:
+    - error
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - private_hidden
 - id: dispatch_houses
-  description: Дома диспетчера
-  required: true
+  name: Дома диспетчера
   role: dispatcher
-  operation_id: listDispatchHouses
+  method: GET
+  path: /api/dispatch/houses
   request:
-    method: GET
-    path: /api/dispatch/houses
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/DispatchHousesResponse
-    required_fields:
+    requiredFields:
     - houses
     - next_after_id
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - private_photo_hidden
 - id: dispatch_selection
-  description: Выбор дома в очереди диспетчера
-  required: true
+  name: Выбор дома в очереди диспетчера
   role: dispatcher
-  operation_id: updateDispatchHouseSelection
+  method: PUT
+  path: /api/dispatch/house-selection
   request:
-    method: PUT
-    path: /api/dispatch/house-selection
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       house_ids:
-      - ${fixture.house_id}
+      - ${house_id}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/DispatchHouseSelectionResponse
-    required_fields: &id009
+    requiredFields:
     - houses
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - dispatch_houses
 - id: dispatch_cases
-  description: Очередь заявок тестового дома
-  required: true
+  name: Очередь заявок тестового дома
   role: dispatcher
-  operation_id: listDispatchCases
+  method: GET
+  path: /api/dispatch/cases
   request:
-    method: GET
-    path: /api/dispatch/cases
-    path_parameters: {}
+    path: {}
     query:
       house_ids[]:
-      - ${fixture.house_id}
+      - ${house_id}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/DispatchCasesResponse
-    required_fields:
+    requiredFields:
     - cases
     - next_cursor
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - dispatch_selection
 - id: resident_not_dispatcher
-  description: Житель не имеет полномочий УК тестового дома
-  required: true
+  name: Житель не имеет полномочий УК тестового дома
   role: resident
-  operation_id: getDispatchCase
+  method: GET
+  path: /api/dispatch/cases/{id}
   request:
-    method: GET
-    path: /api/dispatch/cases/{id}
-    path_parameters:
+    path:
       id: ${case_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 404
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/Error
-    required_fields: *id002
+    requiredFields:
+    - error
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - dispatch_cases
 - id: dispatch_detail
-  description: Диспетчер получает карточку и доступные действия
-  required: true
+  name: Диспетчер получает карточку и доступные действия
   role: dispatcher
-  operation_id: getDispatchCase
+  method: GET
+  path: /api/dispatch/cases/{id}
   request:
-    method: GET
-    path: /api/dispatch/cases/{id}
-    path_parameters:
+    path:
       id: ${case_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/DispatchCaseDetail
-    required_fields: &id015
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/DispatchCaseDetail
+      - type: object
+        required:
+        - case
+        properties:
+          case:
+            type: object
+            required:
+            - id
+            properties:
+              id:
+                const: ${case_id}
+      - type: object
+        required:
+        - management_company
+        properties:
+          management_company:
+            type: object
+            required:
+            - id
+            properties:
+              id:
+                const: ${fixture.company_id}
+    requiredFields:
     - case
     - management_company
     - available_steps
@@ -773,167 +1112,307 @@ checks:
     - available_contractors
     - next_action
     - transitions
-    assertions:
-    - pointer: /case/id
-      equals: ${case_id}
-    - pointer: /management_company/id
-      equals: ${fixture.company_id}
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - resident_not_dispatcher
+  extract:
+    company_id: $.management_company.id
 - id: classify
-  description: Подтверждение категории и начало работы
-  required: true
+  name: Подтверждение категории и начало работы
   role: dispatcher
-  operation_id: updateCaseClassification
+  method: PUT
+  path: /api/dispatch/cases/{case_id}/classification
   request:
-    method: PUT
-    path: /api/dispatch/cases/{case_id}/classification
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       case_type_key: heating
       problem_key: weak_heating
       expected_classification_version: ${classification_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /classification/status
-      equals: confirmed
-    - pointer: /current_step/status_key
-      equals: in_progress
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - classification
+        properties:
+          classification:
+            type: object
+            required:
+            - status
+            properties:
+              status:
+                const: confirmed
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: in_progress
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - dispatch_detail
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
+    contractor_id: $.classification.contractor.id
 - id: assign
-  description: Назначение подходящего исполнителя
-  required: true
+  name: Назначение подходящего исполнителя
   role: dispatcher
-  operation_id: updateCaseAssignment
+  method: PUT
+  path: /api/dispatch/cases/{case_id}/assignment
   request:
-    method: PUT
-    path: /api/dispatch/cases/{case_id}/assignment
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
-      contractor_id: ${fixture.contractor_id}
+      contractor_id: ${contractor_id}
       expected_classification_version: ${classification_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /classification/contractor/id
-      equals: ${fixture.contractor_id}
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - classification
+        properties:
+          classification:
+            type: object
+            required:
+            - contractor
+            properties:
+              contractor:
+                type: object
+                required:
+                - id
+                properties:
+                  id:
+                    const: ${fixture.contractor_id}
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - classify
   extract:
-    case_id: /id
-    case_step: /current_step/key
-    case_version: /workflow/version
-    classification_version: /classification/version
-    old_workflow_version: /workflow/version
-    old_step: /current_step/key
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
+    old_workflow_version: $.workflow.version
+    old_step: $.current_step.key
 - id: message_resident
-  description: 'Переписка: resident'
-  required: true
+  name: 'Переписка: resident'
   role: resident
-  operation_id: createResidentCaseMessage
+  method: POST
+  path: /api/cases/{case_id}/messages
   request:
-    method: POST
-    path: /api/cases/{case_id}/messages
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
-    body: ${data.resident_message}
+    body:
+      body: 'Тестовое сообщение жителя: доступ для осмотра согласован.'
   expected:
-    status_codes:
+    statusCodes:
     - 201
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseEvent
-    required_fields: []
-    assertions:
-    - pointer: /event_type
-      equals: message_added
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseEvent
+      - type: object
+        required:
+        - event_type
+        properties:
+          event_type:
+            const: message_added
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - assign
 - id: message_dispatcher
-  description: 'Переписка: dispatcher'
-  required: true
+  name: 'Переписка: dispatcher'
   role: dispatcher
-  operation_id: createDispatchCaseMessage
+  method: POST
+  path: /api/dispatch/cases/{case_id}/messages
   request:
-    method: POST
-    path: /api/dispatch/cases/{case_id}/messages
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
-    body: ${data.dispatcher_message}
+    body:
+      body: 'Тестовое сообщение диспетчера: заявка принята в работу.'
   expected:
-    status_codes:
+    statusCodes:
     - 201
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseEvent
-    required_fields: []
-    assertions:
-    - pointer: /event_type
-      equals: message_added
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseEvent
+      - type: object
+        required:
+        - event_type
+        properties:
+          event_type:
+            const: message_added
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - message_resident
 - id: clarify
-  description: Диспетчер запрашивает уточнение
-  required: true
+  name: Диспетчер запрашивает уточнение
   role: dispatcher
-  operation_id: performDispatchCaseAction
+  method: POST
+  path: /api/dispatch/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/dispatch/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: request_clarification
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
-      body: ${data.clarification_question}
+      body: 'Подтвердите тестовое время осмотра: с 10 до 12 часов.'
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /id
-      equals: ${case_id}
-    - pointer: /current_step/status_key
-      equals: action_required
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${case_id}
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: action_required
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - message_dispatcher
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
 - id: answer_form
-  description: Житель получает форму ответа на уточнение
-  required: true
+  name: Житель получает форму ответа на уточнение
   role: resident
-  operation_id: getResidentCaseActionForm
+  method: GET
+  path: /api/cases/{case_id}/action-form
   request:
-    method: GET
-    path: /api/cases/{case_id}/action-form
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query:
       action: answer_clarification
       expected_current_step_key: ${case_step}
@@ -941,775 +1420,1360 @@ checks:
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/ResidentActionForm
-    required_fields:
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/ResidentActionForm
+      - type: object
+        required:
+        - action
+        properties:
+          action:
+            const: answer_clarification
+    requiredFields:
     - action
     - title
     - submit_label
     - expected_current_step_key
     - expected_workflow_version
     - fields
-    assertions:
-    - pointer: /action
-      equals: answer_clarification
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - clarify
 - id: answer
-  description: Житель отвечает, работа продолжается
-  required: true
+  name: Житель отвечает, работа продолжается
   role: resident
-  operation_id: performResidentCaseAction
+  method: POST
+  path: /api/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: answer_clarification
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
-      body: ${data.clarification_answer}
+      body: 'Подтверждаю тестовое время осмотра: с 10 до 12 часов.'
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /id
-      equals: ${case_id}
-    - pointer: /current_step/status_key
-      equals: in_progress
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${case_id}
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: in_progress
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - answer_form
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
 - id: stale_workflow
-  description: Устаревшая версия workflow отклоняется
-  required: true
+  name: Устаревшая версия workflow отклоняется
   role: dispatcher
-  operation_id: performDispatchCaseAction
+  method: POST
+  path: /api/dispatch/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/dispatch/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: finish_work
       expected_current_step_key: ${old_step}
       expected_workflow_version: ${old_workflow_version}
   expected:
-    status_codes:
+    statusCodes:
     - 409
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/Error
-    required_fields: *id002
+    requiredFields:
+    - error
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - answer
 - id: finish_first
-  description: Исполнитель сообщает об устранении
-  required: true
+  name: Исполнитель сообщает об устранении
   role: dispatcher
-  operation_id: performDispatchCaseAction
+  method: POST
+  path: /api/dispatch/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/dispatch/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: finish_work
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /id
-      equals: ${case_id}
-    - pointer: /current_step/status_key
-      equals: closed_by_executor
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${case_id}
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: closed_by_executor
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - stale_workflow
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
 - id: reject_repair
-  description: Житель возвращает заявку в работу
-  required: true
+  name: Житель возвращает заявку в работу
   role: resident
-  operation_id: performResidentCaseAction
+  method: POST
+  path: /api/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: reject_repair
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /id
-      equals: ${case_id}
-    - pointer: /current_step/status_key
-      equals: in_progress
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${case_id}
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: in_progress
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - finish_first
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
 - id: finish_again
-  description: Повторное устранение
-  required: true
+  name: Повторное устранение
   role: dispatcher
-  operation_id: performDispatchCaseAction
+  method: POST
+  path: /api/dispatch/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/dispatch/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: finish_work
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /id
-      equals: ${case_id}
-    - pointer: /current_step/status_key
-      equals: closed_by_executor
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${case_id}
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: closed_by_executor
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - reject_repair
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
 - id: confirm_repair
-  description: Подтверждение ремонта и передача на перерасчёт (демо)
-  required: true
+  name: Подтверждение ремонта и передача на перерасчёт
   role: resident
-  operation_id: performResidentCaseAction
+  method: POST
+  path: /api/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: confirm_repair
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /id
-      equals: ${case_id}
-    - pointer: /current_step/status_key
-      equals: awaiting_recalculation
-    - pointer: /workflow/recalculation_requests/0/status
-      equals: submitted
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${case_id}
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: awaiting_recalculation
+      - type: object
+        required:
+        - workflow
+        properties:
+          workflow:
+            type: object
+            required:
+            - recalculation_requests
+            properties:
+              recalculation_requests:
+                type: array
+                minItems: 1
+                prefixItems:
+                - type: object
+                  required:
+                  - status
+                  properties:
+                    status:
+                      const: submitted
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - finish_again
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
 - id: reject_recalculation
-  description: 'Перерасчёт не найден: продолжается та же заявка'
-  required: true
+  name: 'Перерасчёт не найден: продолжается та же заявка'
   role: resident
-  operation_id: performResidentCaseAction
+  method: POST
+  path: /api/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: reject_recalculation
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /id
-      equals: ${case_id}
-    - pointer: /current_step/status_key
-      equals: in_progress
-    - pointer: /workflow/return_reason
-      equals: recalculation_missing
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${case_id}
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: in_progress
+      - type: object
+        required:
+        - workflow
+        properties:
+          workflow:
+            type: object
+            required:
+            - return_reason
+            properties:
+              return_reason:
+                const: recalculation_missing
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - confirm_repair
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
 - id: retry_recalculation
-  description: Диспетчер повторяет передачу (демо)
-  required: true
+  name: Диспетчер повторяет передачу
   role: dispatcher
-  operation_id: performDispatchCaseAction
+  method: POST
+  path: /api/dispatch/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/dispatch/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: retry_recalculation
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /id
-      equals: ${case_id}
-    - pointer: /current_step/status_key
-      equals: awaiting_recalculation
-    - pointer: /workflow/recalculation_requests/1/status
-      equals: submitted
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${case_id}
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: awaiting_recalculation
+      - type: object
+        required:
+        - workflow
+        properties:
+          workflow:
+            type: object
+            required:
+            - recalculation_requests
+            properties:
+              recalculation_requests:
+                type: array
+                minItems: 2
+                prefixItems:
+                - {}
+                - type: object
+                  required:
+                  - status
+                  properties:
+                    status:
+                      const: submitted
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - reject_recalculation
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
 - id: confirm_recalculation
-  description: Житель подтверждает перерасчёт и завершает заявку
-  required: true
+  name: Житель подтверждает перерасчёт и завершает заявку
   role: resident
-  operation_id: performResidentCaseAction
+  method: POST
+  path: /api/cases/{case_id}/actions
   request:
-    method: POST
-    path: /api/cases/{case_id}/actions
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       action: confirm_recalculation
       expected_current_step_key: ${case_step}
       expected_workflow_version: ${case_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /id
-      equals: ${case_id}
-    - pointer: /current_step/status_key
-      equals: completed
-  extract: *id007
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${case_id}
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: completed
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - retry_recalculation
+  extract:
+    case_id: $.id
+    case_step: $.current_step.key
+    case_version: $.workflow.version
+    classification_version: $.classification.version
+    completed_step_key: $.current_step.key
 - id: completed_cases
-  description: Завершённая заявка в списке автора
-  required: true
+  name: Завершённая заявка в списке автора
   role: resident
-  operation_id: listCases
+  method: GET
+  path: /api/cases
   request:
-    method: GET
-    path: /api/cases
-    path_parameters: {}
+    path: {}
     query:
       scope: mine
       status: completed
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CasesResponse
-    required_fields: *id005
-    assertions:
-    - pointer: /cases/0/id
-      equals: ${case_id}
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CasesResponse
+      - type: object
+        required:
+        - cases
+        properties:
+          cases:
+            type: array
+            minItems: 1
+            prefixItems:
+            - type: object
+              required:
+              - id
+              properties:
+                id:
+                  const: ${case_id}
+    requiredFields:
+    - cases
+    - next_cursor
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - confirm_recalculation
 - id: events_resident
-  description: 'История с учётом прав: resident'
-  required: true
+  name: 'История с учётом прав: resident'
   role: resident
-  operation_id: listResidentCaseEvents
+  method: GET
+  path: /api/cases/{case_id}/events
   request:
-    method: GET
-    path: /api/cases/{case_id}/events
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/CaseEventsResponse
-    required_fields: &id008
+    requiredFields:
     - events
     - next_cursor
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - completed_cases
 - id: events_neighbor
-  description: 'История с учётом прав: neighbor'
-  required: true
+  name: 'История с учётом прав: neighbor'
   role: neighbor
-  operation_id: listResidentCaseEvents
+  method: GET
+  path: /api/cases/{case_id}/events
   request:
-    method: GET
-    path: /api/cases/{case_id}/events
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseEventsResponse
-    required_fields: *id008
-    assertions:
-    - pointer: /events
-      excludes_object:
-        event_type: message_added
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseEventsResponse
+      - type: object
+        required:
+        - events
+        properties:
+          events:
+            type: array
+            not:
+              contains:
+                type: object
+                required:
+                - event_type
+                properties:
+                  event_type:
+                    const: message_added
+    requiredFields:
+    - events
+    - next_cursor
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - events_resident
 - id: events_dispatcher
-  description: 'История с учётом прав: dispatcher'
-  required: true
+  name: 'История с учётом прав: dispatcher'
   role: dispatcher
-  operation_id: getDispatchCaseEvents
+  method: GET
+  path: /api/dispatch/cases/{case_id}/events
   request:
-    method: GET
-    path: /api/dispatch/cases/{case_id}/events
-    path_parameters: *id006
+    path:
+      case_id: ${case_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/CaseEventsResponse
-    required_fields: *id008
+    requiredFields:
+    - events
+    - next_cursor
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - events_neighbor
 - id: invalid_max_login
-  description: Вход отклоняет неподписанные MAX initData
-  required: true
-  role: anonymous
-  operation_id: authenticateMax
+  name: Вход отклоняет неподписанные MAX initData
+  role: public
+  method: POST
+  path: /api/auth/session
   request:
-    method: POST
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       init_data: invalid-evaluation-init-data
   expected:
-    status_codes:
+    statusCodes:
     - 401
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/Error
-    required_fields: *id002
-    assertions:
-    - pointer: /error/code
-      equals: invalid_max_data
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/Error
+      - type: object
+        required:
+        - error
+        properties:
+          error:
+            type: object
+            required:
+            - code
+            properties:
+              code:
+                const: invalid_max_data
+    requiredFields:
+    - error
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - events_dispatcher
 - id: webhook_without_secret
-  description: Вебхук без секрета отклоняется до обработки события
-  required: true
-  role: anonymous
-  operation_id: receiveMaxBotUpdate
+  name: Вебхук без секрета отклоняется до обработки события
+  role: public
+  method: POST
+  path: /max/webhook
   request:
-    method: POST
-    path: /max/webhook
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: '*/*'
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       update_type: bot_added
       chat_id: 1
       is_channel: true
   expected:
-    status_codes:
+    statusCodes:
     - 401
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - invalid_max_login
 - id: dispatch_companies
-  description: Список компаний диспетчера
-  required: true
+  name: Список компаний диспетчера
   role: dispatcher
-  operation_id: listDispatchCompanies
+  method: GET
+  path: /api/dispatch/companies
   request:
-    method: GET
-    path: /api/dispatch/companies
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/DispatchCompaniesResponse
-    required_fields:
+    requiredFields:
     - companies
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - webhook_without_secret
 - id: dispatch_selection_read
-  description: Сохранённый выбор рабочего дома
-  required: true
+  name: Сохранённый выбор рабочего дома
   role: dispatcher
-  operation_id: getDispatchHouseSelection
+  method: GET
+  path: /api/dispatch/house-selection
   request:
-    method: GET
-    path: /api/dispatch/house-selection
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/DispatchHouseSelectionResponse
-    required_fields: *id009
-    assertions:
-    - pointer: /houses/0/id
-      equals: ${fixture.house_id}
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/DispatchHouseSelectionResponse
+      - type: object
+        required:
+        - houses
+        properties:
+          houses:
+            type: array
+            minItems: 1
+            prefixItems:
+            - type: object
+              required:
+              - id
+              properties:
+                id:
+                  const: ${fixture.house_id}
+    requiredFields:
+    - houses
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - dispatch_companies
 - id: dispatch_case_types
-  description: Каталог категорий для диспетчера
-  required: true
+  name: Каталог категорий для диспетчера
   role: dispatcher
-  operation_id: listDispatchCaseTypes
+  method: GET
+  path: /api/dispatch/case-types
   request:
-    method: GET
-    path: /api/dispatch/case-types
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/CaseTypesResponse
-    required_fields: *id010
+    requiredFields:
+    - case_types
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - dispatch_selection_read
 - id: dispatch_case_type
-  description: Конструктор категории для диспетчера
-  required: true
+  name: Конструктор категории для диспетчера
   role: dispatcher
-  operation_id: getDispatchCaseType
+  method: GET
+  path: /api/dispatch/case-types/{key}
   request:
-    method: GET
-    path: /api/dispatch/case-types/{key}
-    path_parameters:
+    path:
       key: heating
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseType
-    required_fields: *id011
-    assertions:
-    - pointer: /key
-      equals: heating
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseType
+      - type: object
+        required:
+        - key
+        properties:
+          key:
+            const: heating
+    requiredFields:
+    - key
+    - name
+    - description
+    - constructor
+    - steps
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - dispatch_case_types
 - id: dispatch_private_photo
-  description: Диспетчер скачивает фото приватной заявки своей УК
-  required: true
+  name: Диспетчер скачивает фото приватной заявки своей УК
   role: dispatcher
-  operation_id: getDispatchCasePhoto
+  method: GET
+  path: /api/dispatch/cases/{case_id}/photos/{id}
   request:
-    method: GET
-    path: /api/dispatch/cases/{case_id}/photos/{id}
-    path_parameters:
+    path:
       case_id: ${private_case_id}
       id: ${photo_id}
     query: {}
     headers:
       Accept: image/jpeg
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: image/png
+    contentType: image/png
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - dispatch_case_type
 - id: create_contractor
-  description: Создание исполнителя в тестовой УК
-  required: true
+  name: Создание исполнителя в тестовой УК
   role: dispatcher
-  operation_id: createCompanyContractor
+  method: POST
+  path: /api/dispatch/companies/{company_id}/contractors
   request:
-    method: POST
-    path: /api/dispatch/companies/{company_id}/contractors
-    path_parameters: &id014
-      company_id: ${fixture.company_id}
+    path:
+      company_id: ${company_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
-      name: Исполнитель ${run_id}
-      phone: Тестовый контакт ${run_id}
+      name: Исполнитель DATA-API
+      phone: Тестовый контакт DATA-API
   expected:
-    status_codes:
+    statusCodes:
     - 201
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/Contractor
-    required_fields: &id012
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/Contractor
+      - type: object
+        required:
+        - archived
+        properties:
+          archived:
+            const: false
+    requiredFields:
     - id
     - name
     - phone
     - max_url
     - archived
-    assertions:
-    - pointer: /archived
-      equals: false
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - dispatch_private_photo
   extract:
-    created_contractor_id: /id
+    created_contractor_id: $.id
 - id: archive_contractor
-  description: Архивация исполнителя через PATCH
-  required: true
+  name: Архивация исполнителя через PATCH
   role: dispatcher
-  operation_id: updateCompanyContractor
+  method: PATCH
+  path: /api/dispatch/companies/{company_id}/contractors/{id}
   request:
-    method: PATCH
-    path: /api/dispatch/companies/{company_id}/contractors/{id}
-    path_parameters: &id013
-      company_id: ${fixture.company_id}
+    path:
+      company_id: ${company_id}
       id: ${created_contractor_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       archived: true
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/Contractor
-    required_fields: *id012
-    assertions:
-    - pointer: /id
-      equals: ${created_contractor_id}
-    - pointer: /archived
-      equals: true
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/Contractor
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${created_contractor_id}
+      - type: object
+        required:
+        - archived
+        properties:
+          archived:
+            const: true
+    requiredFields:
+    - id
+    - name
+    - phone
+    - max_url
+    - archived
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - create_contractor
 - id: restore_contractor
-  description: Обновление и восстановление исполнителя через PUT
-  required: true
+  name: Обновление и восстановление исполнителя через PUT
   role: dispatcher
-  operation_id: replaceCompanyContractor
+  method: PUT
+  path: /api/dispatch/companies/{company_id}/contractors/{id}
   request:
-    method: PUT
-    path: /api/dispatch/companies/{company_id}/contractors/{id}
-    path_parameters: *id013
+    path:
+      company_id: ${company_id}
+      id: ${created_contractor_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
-      name: Обновлённый исполнитель ${run_id}
+      name: Обновлённый исполнитель DATA-API
       archived: false
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/Contractor
-    required_fields: *id012
-    assertions:
-    - pointer: /name
-      equals: Обновлённый исполнитель ${run_id}
-    - pointer: /archived
-      equals: false
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/Contractor
+      - type: object
+        required:
+        - name
+        properties:
+          name:
+            const: Обновлённый исполнитель DATA-API
+      - type: object
+        required:
+        - archived
+        properties:
+          archived:
+            const: false
+    requiredFields:
+    - id
+    - name
+    - phone
+    - max_url
+    - archived
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - archive_contractor
 - id: list_contractors
-  description: Список исполнителей компании
-  required: true
+  name: Список исполнителей компании
   role: dispatcher
-  operation_id: listCompanyContractors
+  method: GET
+  path: /api/dispatch/companies/{company_id}/contractors
   request:
-    method: GET
-    path: /api/dispatch/companies/{company_id}/contractors
-    path_parameters: *id014
+    path:
+      company_id: ${company_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/ContractorsResponse
-    required_fields:
+    requiredFields:
     - contractors
     - next_after_id
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - restore_contractor
 - id: create_routing
-  description: Создание правила для нового исполнителя и тестового дома
-  required: true
+  name: Создание правила для нового исполнителя и тестового дома
   role: dispatcher
-  operation_id: createCompanyContractorRouting
+  method: POST
+  path: /api/dispatch/companies/{company_id}/contractor-routings
   request:
-    method: POST
-    path: /api/dispatch/companies/{company_id}/contractor-routings
-    path_parameters: *id014
+    path:
+      company_id: ${company_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       contractor_id: ${created_contractor_id}
       case_type_key: heating
       problem_key: weak_heating
-      house_id: ${fixture.house_id}
+      house_id: ${house_id}
   expected:
-    status_codes:
+    statusCodes:
     - 201
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/ContractorRouting
-    required_fields:
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/ContractorRouting
+      - type: object
+        required:
+        - contractor_id
+        properties:
+          contractor_id:
+            const: ${created_contractor_id}
+      - type: object
+        required:
+        - house_id
+        properties:
+          house_id:
+            const: ${fixture.house_id}
+    requiredFields:
     - id
     - contractor_id
     - case_type_key
     - problem_key
     - house_id
-    assertions:
-    - pointer: /contractor_id
-      equals: ${created_contractor_id}
-    - pointer: /house_id
-      equals: ${fixture.house_id}
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - list_contractors
   extract:
-    created_routing_id: /id
+    created_routing_id: $.id
 - id: list_routings
-  description: Список правил назначения компании
-  required: true
+  name: Список правил назначения компании
   role: dispatcher
-  operation_id: listCompanyContractorRoutings
+  method: GET
+  path: /api/dispatch/companies/{company_id}/contractor-routings
   request:
-    method: GET
-    path: /api/dispatch/companies/{company_id}/contractor-routings
-    path_parameters: *id014
+    path:
+      company_id: ${company_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
+    contentType: application/json
+    bodySchema:
       $ref: openapi.yaml#/components/schemas/ContractorRoutingsResponse
-    required_fields: &id018
+    requiredFields:
     - contractor_routings
     - next_after_id
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - create_routing
 - id: create_status_case
-  description: Отдельная заявка для PATCH и PUT статуса
-  required: true
+  name: Отдельная заявка для PATCH и PUT статуса
   role: resident
-  operation_id: createCase
+  method: POST
+  path: /api/cases
   request:
-    method: POST
-    path: /api/cases
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
-    body: ${data.public_case}
+    body:
+      case_type_key: heating
+      problem_key: weak_heating
+      description: 'Проверка API DATA-API: радиаторы в тестовой квартире недостаточно тёплые.'
+      location_details: Тестовая квартира 42, спальня
+      visibility: public
+      is_emergency: false
+      violation_started_at: '2026-09-27T00:00:00Z'
   expected:
-    status_codes:
+    statusCodes:
     - 201
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /current_step/status_key
-      equals: new
-  extract: &id017
-    status_case_id: /id
-    status_step: /current_step/key
-    status_version: /workflow/version
-    status_classification_version: /classification/version
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: new
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - list_routings
+  extract:
+    status_case_id: $.id
+    status_step: $.current_step.key
+    status_version: $.workflow.version
+    status_classification_version: $.classification.version
 - id: status_case_detail
-  description: Диспетчер получает доступный шаг начала работы
-  required: true
+  name: Диспетчер получает доступный шаг начала работы
   role: dispatcher
-  operation_id: getDispatchCase
+  method: GET
+  path: /api/dispatch/cases/{id}
   request:
-    method: GET
-    path: /api/dispatch/cases/{id}
-    path_parameters:
+    path:
       id: ${status_case_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/DispatchCaseDetail
-    required_fields: *id015
-    assertions:
-    - pointer: /available_steps/0/status_key
-      equals: in_progress
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/DispatchCaseDetail
+      - type: object
+        required:
+        - available_steps
+        properties:
+          available_steps:
+            type: array
+            minItems: 1
+            prefixItems:
+            - type: object
+              required:
+              - status_key
+              properties:
+                status_key:
+                  const: in_progress
+    requiredFields:
+    - case
+    - management_company
+    - available_steps
+    - assigned_contractor
+    - available_contractors
+    - next_action
+    - transitions
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - create_status_case
   extract:
-    start_step_key: /available_steps/0/key
+    start_step_key: $.available_steps[0].key
 - id: dispatch_action_form
-  description: Форма подтверждения категории с актуальными версиями
-  required: true
+  name: Форма подтверждения категории с актуальными версиями
   role: dispatcher
-  operation_id: getDispatchCaseActionForm
+  method: GET
+  path: /api/dispatch/cases/{case_id}/action-form
   request:
-    method: GET
-    path: /api/dispatch/cases/{case_id}/action-form
-    path_parameters: &id016
+    path:
       case_id: ${status_case_id}
     query:
       intent: advance
@@ -1720,12 +2784,25 @@ checks:
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/DispatchActionForm
-    required_fields:
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/DispatchActionForm
+      - type: object
+        required:
+        - kind
+        properties:
+          kind:
+            const: classification
+      - type: object
+        required:
+        - expected_workflow_version
+        properties:
+          expected_workflow_version:
+            const: ${status_version}
+    requiredFields:
     - kind
     - action
     - title
@@ -1734,353 +2811,702 @@ checks:
     - expected_workflow_version
     - expected_classification_version
     - fields
-    assertions:
-    - pointer: /kind
-      equals: classification
-    - pointer: /expected_workflow_version
-      equals: ${status_version}
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - status_case_detail
 - id: dispatch_status_patch
-  description: Начало работы через PATCH статуса
-  required: true
+  name: Начало работы через PATCH статуса
   role: dispatcher
-  operation_id: updateDispatchCaseStatus
+  method: PATCH
+  path: /api/dispatch/cases/{case_id}/status
   request:
-    method: PATCH
-    path: /api/dispatch/cases/{case_id}/status
-    path_parameters: *id016
+    path:
+      case_id: ${status_case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       step_key: ${start_step_key}
       expected_current_step_key: ${status_step}
       expected_workflow_version: ${status_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /current_step/status_key
-      equals: in_progress
-  extract: *id017
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: in_progress
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - dispatch_action_form
+  extract:
+    status_case_id: $.id
+    status_step: $.current_step.key
+    status_version: $.workflow.version
+    status_classification_version: $.classification.version
 - id: classification_patch
-  description: Подтверждение категории через PATCH
-  required: true
+  name: Подтверждение категории через PATCH
   role: dispatcher
-  operation_id: patchCaseClassification
+  method: PATCH
+  path: /api/dispatch/cases/{case_id}/classification
   request:
-    method: PATCH
-    path: /api/dispatch/cases/{case_id}/classification
-    path_parameters: *id016
+    path:
+      case_id: ${status_case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       case_type_key: heating
       problem_key: weak_heating
       expected_classification_version: ${status_classification_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /classification/status
-      equals: confirmed
-  extract: *id017
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - classification
+        properties:
+          classification:
+            type: object
+            required:
+            - status
+            properties:
+              status:
+                const: confirmed
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - dispatch_status_patch
+  extract:
+    status_case_id: $.id
+    status_step: $.current_step.key
+    status_version: $.workflow.version
+    status_classification_version: $.classification.version
 - id: assignment_patch
-  description: Назначение нового исполнителя через PATCH
-  required: true
+  name: Назначение нового исполнителя через PATCH
   role: dispatcher
-  operation_id: patchCaseAssignment
+  method: PATCH
+  path: /api/dispatch/cases/{case_id}/assignment
   request:
-    method: PATCH
-    path: /api/dispatch/cases/{case_id}/assignment
-    path_parameters: *id016
+    path:
+      case_id: ${status_case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       contractor_id: ${created_contractor_id}
       expected_classification_version: ${status_classification_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /classification/contractor/id
-      equals: ${created_contractor_id}
-  extract: *id017
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - classification
+        properties:
+          classification:
+            type: object
+            required:
+            - contractor
+            properties:
+              contractor:
+                type: object
+                required:
+                - id
+                properties:
+                  id:
+                    const: ${created_contractor_id}
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - classification_patch
+  extract:
+    status_case_id: $.id
+    status_step: $.current_step.key
+    status_version: $.workflow.version
+    status_classification_version: $.classification.version
 - id: status_case_finish_detail
-  description: Диспетчер получает доступный шаг завершения работ
-  required: true
+  name: Диспетчер получает доступный шаг завершения работ
   role: dispatcher
-  operation_id: getDispatchCase
+  method: GET
+  path: /api/dispatch/cases/{id}
   request:
-    method: GET
-    path: /api/dispatch/cases/{id}
-    path_parameters:
+    path:
       id: ${status_case_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/DispatchCaseDetail
-    required_fields: *id015
-    assertions:
-    - pointer: /available_steps/0/status_key
-      equals: closed_by_executor
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/DispatchCaseDetail
+      - type: object
+        required:
+        - available_steps
+        properties:
+          available_steps:
+            type: array
+            minItems: 1
+            prefixItems:
+            - type: object
+              required:
+              - status_key
+              properties:
+                status_key:
+                  const: closed_by_executor
+    requiredFields:
+    - case
+    - management_company
+    - available_steps
+    - assigned_contractor
+    - available_contractors
+    - next_action
+    - transitions
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - assignment_patch
   extract:
-    finish_step_key: /available_steps/0/key
+    finish_step_key: $.available_steps[0].key
 - id: dispatch_status_put
-  description: Завершение работ через PUT статуса
-  required: true
+  name: Завершение работ через PUT статуса
   role: dispatcher
-  operation_id: replaceDispatchCaseStatus
+  method: PUT
+  path: /api/dispatch/cases/{case_id}/status
   request:
-    method: PUT
-    path: /api/dispatch/cases/{case_id}/status
-    path_parameters: *id016
+    path:
+      case_id: ${status_case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       step_key: ${finish_step_key}
       expected_current_step_key: ${status_step}
       expected_workflow_version: ${status_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /current_step/status_key
-      equals: closed_by_executor
-  extract: *id017
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: closed_by_executor
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - status_case_finish_detail
+  extract:
+    status_case_id: $.id
+    status_step: $.current_step.key
+    status_version: $.workflow.version
+    status_classification_version: $.classification.version
 - id: resident_status_patch
-  description: Житель возвращает заявку в работу через PATCH статуса
-  required: true
+  name: Житель возвращает заявку в работу через PATCH статуса
   role: resident
-  operation_id: updateResidentCaseStatus
+  method: PATCH
+  path: /api/cases/{case_id}/status
   request:
-    method: PATCH
-    path: /api/cases/{case_id}/status
-    path_parameters: *id016
+    path:
+      case_id: ${status_case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       step_key: ${start_step_key}
       expected_workflow_version: ${status_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /current_step/status_key
-      equals: in_progress
-  extract: *id017
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: in_progress
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - dispatch_status_put
+  extract:
+    status_case_id: $.id
+    status_step: $.current_step.key
+    status_version: $.workflow.version
+    status_classification_version: $.classification.version
 - id: dispatch_status_finish_again
-  description: Повторное завершение работ после возврата
-  required: true
+  name: Повторное завершение работ после возврата
   role: dispatcher
-  operation_id: replaceDispatchCaseStatus
+  method: PUT
+  path: /api/dispatch/cases/{case_id}/status
   request:
-    method: PUT
-    path: /api/dispatch/cases/{case_id}/status
-    path_parameters: *id016
+    path:
+      case_id: ${status_case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       step_key: ${finish_step_key}
       expected_current_step_key: ${status_step}
       expected_workflow_version: ${status_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /current_step/status_key
-      equals: closed_by_executor
-  extract: *id017
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: closed_by_executor
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - resident_status_patch
+  extract:
+    status_case_id: $.id
+    status_step: $.current_step.key
+    status_version: $.workflow.version
+    status_classification_version: $.classification.version
 - id: resident_status_put
-  description: Житель подтверждает ремонт через PUT статуса
-  required: true
+  name: Житель подтверждает ремонт через PUT статуса
   role: resident
-  operation_id: replaceResidentCaseStatus
+  method: PUT
+  path: /api/cases/{case_id}/status
   request:
-    method: PUT
-    path: /api/cases/{case_id}/status
-    path_parameters: *id016
+    path:
+      case_id: ${status_case_id}
     query: {}
     headers:
       Accept: application/json
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
       Content-Type: application/json
     body:
       step_key: ${completed_step_key}
       expected_workflow_version: ${status_version}
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CaseDetail
-    required_fields: *id003
-    assertions:
-    - pointer: /current_step/status_key
-      equals: awaiting_recalculation
-    - pointer: /workflow/recalculation_requests/0/status
-      equals: submitted
-  extract: *id017
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CaseDetail
+      - type: object
+        required:
+        - current_step
+        properties:
+          current_step:
+            type: object
+            required:
+            - status_key
+            properties:
+              status_key:
+                const: awaiting_recalculation
+      - type: object
+        required:
+        - workflow
+        properties:
+          workflow:
+            type: object
+            required:
+            - recalculation_requests
+            properties:
+              recalculation_requests:
+                type: array
+                minItems: 1
+                prefixItems:
+                - type: object
+                  required:
+                  - status
+                  properties:
+                    status:
+                      const: submitted
+    requiredFields:
+    - id
+    - case_type
+    - title
+    - description
+    - is_emergency
+    - location_details
+    - created_at
+    - last_activity_at
+    - confirmation_count
+    - confirmed_by_me
+    - can_confirm
+    - visibility
+    - house
+    - current_step
+    - violation_started_at
+    - violation_ended_at
+    - is_creator
+    - photos
+    - problem_key
+    - classification
+    - workflow
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - dispatch_status_finish_again
+  extract:
+    status_case_id: $.id
+    status_step: $.current_step.key
+    status_version: $.workflow.version
+    status_classification_version: $.classification.version
 - id: delete_routing
-  description: Удаление созданного в этом прогоне правила
-  required: true
+  name: Удаление созданного в этом прогоне правила
   role: dispatcher
-  operation_id: deleteCompanyContractorRouting
+  method: DELETE
+  path: /api/dispatch/companies/{company_id}/contractor-routings/{id}
   request:
-    method: DELETE
-    path: /api/dispatch/companies/{company_id}/contractor-routings/{id}
-    path_parameters:
-      company_id: ${fixture.company_id}
+    path:
+      company_id: ${company_id}
       id: ${created_routing_id}
     query: {}
     headers:
       Accept: '*/*'
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
   expected:
-    status_codes:
+    statusCodes:
     - 204
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - resident_status_put
 - id: routing_deleted
-  description: Удалённое правило отсутствует в списке
-  required: true
+  name: Удалённое правило отсутствует в списке
   role: dispatcher
-  operation_id: listCompanyContractorRoutings
+  method: GET
+  path: /api/dispatch/companies/{company_id}/contractor-routings
   request:
-    method: GET
-    path: /api/dispatch/companies/{company_id}/contractor-routings
-    path_parameters: *id014
+    path:
+      company_id: ${company_id}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/ContractorRoutingsResponse
-    required_fields: *id018
-    assertions:
-    - pointer: /contractor_routings
-      excludes_object:
-        id: ${created_routing_id}
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/ContractorRoutingsResponse
+      - type: object
+        required:
+        - contractor_routings
+        properties:
+          contractor_routings:
+            type: array
+            not:
+              contains:
+                type: object
+                required:
+                - id
+                properties:
+                  id:
+                    const: ${created_routing_id}
+    requiredFields:
+    - contractor_routings
+    - next_after_id
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - delete_routing
 - id: logout_untrusted_origin
-  description: Выход с постороннего Origin не отзывает сессию
-  required: true
+  name: Выход с постороннего Origin не отзывает сессию
   role: resident
-  operation_id: logout
+  method: DELETE
+  path: /api/auth/session
   request:
-    method: DELETE
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
       Origin: https://untrusted.example.invalid
   expected:
-    status_codes:
+    statusCodes:
     - 403
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/Error
-    required_fields: *id002
-    assertions:
-    - pointer: /error/code
-      equals: invalid_origin
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/Error
+      - type: object
+        required:
+        - error
+        properties:
+          error:
+            type: object
+            required:
+            - code
+            properties:
+              code:
+                const: invalid_origin
+    requiredFields:
+    - error
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - routing_deleted
 - id: session_after_rejected_logout
-  description: Сессия сохраняется после отклонённого выхода
-  required: true
+  name: Сессия сохраняется после отклонённого выхода
   role: resident
-  operation_id: getCurrentUser
+  method: GET
+  path: /api/auth/session
   request:
-    method: GET
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: application/json
   expected:
-    status_codes:
+    statusCodes:
     - 200
-    content_type: application/json
-    schema:
-      $ref: openapi.yaml#/components/schemas/CurrentUser
-    required_fields: *id001
-    assertions:
-    - pointer: /id
-      equals: ${accounts.resident.user_id}
+    contentType: application/json
+    bodySchema:
+      allOf:
+      - $ref: openapi.yaml#/components/schemas/CurrentUser
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            const: ${accounts.resident.user_id}
+    requiredFields:
+    - id
+    - max_user_id
+    - first_name
+    - last_name
+    - photo_url
+    - house
+    - active_role
+    - available_roles
+  timeoutMs: 60000
+  repeatable: true
+  dependsOn:
+  - logout_untrusted_origin
 - id: anonymous_logout_first
-  description: Выход без сессии идемпотентен
-  required: true
-  role: anonymous
-  operation_id: logout
+  name: Выход без сессии идемпотентен
+  role: public
+  method: DELETE
+  path: /api/auth/session
   request:
-    method: DELETE
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: '*/*'
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
   expected:
-    status_codes:
+    statusCodes:
     - 204
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - session_after_rejected_logout
 - id: anonymous_logout_repeat
-  description: Выход без сессии идемпотентен
-  required: true
-  role: anonymous
-  operation_id: logout
+  name: Выход без сессии идемпотентен
+  role: public
+  method: DELETE
+  path: /api/auth/session
   request:
-    method: DELETE
-    path: /api/auth/session
-    path_parameters: {}
+    path: {}
     query: {}
     headers:
       Accept: '*/*'
-      Origin: ${origin}
+      Origin: https://app.smirnov-web.ru
   expected:
-    status_codes:
+    statusCodes:
     - 204
+  timeoutMs: 60000
+  repeatable: false
+  dependsOn:
+  - anonymous_logout_first
