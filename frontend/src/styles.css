@@ -1,0 +1,87 @@
+@import 'tailwindcss';
+@source '.';
+
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.app-theme {
+  color-scheme: light;
+  background: var(--background-surface);
+  color: var(--text-primary);
+
+  --app-page-width: 440px;
+  --app-page-gutter: var(--spacing-size2xl);
+  --app-card-padding: var(--spacing-size2xl);
+  --app-section-gap: 32px;
+  --app-empty-padding: 48px;
+  --app-control-height: 48px;
+  --app-control-height-compact: 40px;
+  --app-nav-height: 56px;
+  --app-case-detail-title-line-height: 1.15;
+  --app-radius-card: var(--size-border-radius-semantic-border-radius-card);
+  --app-radius-promo: var(--size-border-radius-semantic-border-radius-promo);
+  --app-radius-floating: var(
+    --size-border-radius-semantic-border-radius-floating
+  );
+  --app-radius-control: var(--size-border-radius-action-medium);
+  --app-radius-small: var(--size-border-radius-action-small);
+  --app-accent-subtle: color-mix(
+    in srgb,
+    var(--text-themed) 12%,
+    var(--background-primary)
+  );
+  --app-accent-muted: color-mix(
+    in srgb,
+    var(--text-themed) 35%,
+    var(--background-primary)
+  );
+  --app-accent-text: color-mix(
+    in srgb,
+    var(--text-themed) 80%,
+    var(--text-primary)
+  );
+  --app-accent-strong: color-mix(
+    in srgb,
+    var(--button-primary) 80%,
+    var(--text-primary-static)
+  );
+  --app-shadow-floating: 0 8px 24px rgb(0 0 0 / 12%);
+  --app-attention-bg: #fff0e9;
+  --app-attention-fg: #b34126;
+
+  --app-status-new-bg: #eff1f5;
+  --app-status-new-fg: #626879;
+  --app-status-in-progress-bg: #f2edff;
+  --app-status-in-progress-fg: #5f2cd5;
+  --app-status-action-required-bg: #fff0f3;
+  --app-status-action-required-fg: #c23f55;
+  --app-status-closed-by-executor-bg: #eaf2ff;
+  --app-status-closed-by-executor-fg: #276bc6;
+  --app-status-completed-bg: #e8f8f0;
+  --app-status-completed-fg: #137b55;
+}
+
+.app-theme[data-app-theme='dark'] {
+  color-scheme: dark;
+  --app-shadow-floating: 0 8px 24px rgb(0 0 0 / 36%);
+  --app-attention-bg: #503025;
+  --app-attention-fg: #ffcab0;
+  --app-status-new-bg: #3b3d46;
+  --app-status-new-fg: #d2d4de;
+  --app-status-in-progress-bg: #362954;
+  --app-status-in-progress-fg: #dbcaff;
+  --app-status-action-required-bg: #512b39;
+  --app-status-action-required-fg: #ffc0ce;
+  --app-status-closed-by-executor-bg: #263b59;
+  --app-status-closed-by-executor-fg: #bed8ff;
+  --app-status-completed-bg: #214536;
+  --app-status-completed-fg: #bbefd5;
+}
