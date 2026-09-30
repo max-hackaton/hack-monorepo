@@ -1,0 +1,144 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ruby_checks:
+    name: Ruby lint and security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: backend
+          bundler-cache: true
+      - name: RuboCop
+        run: bin/rubocop -f github
+      - name: Readability
+        run: bin/check_readability
+      - name: Brakeman
+        run: bin/brakeman --no-pager
+      - name: Dependency audit
+        run: bin/bundler-audit check --update
+
+  backend:
+    name: Rails database and boot
+    runs-on: ubuntu-24.04
+    environment: test
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      RAILS_ENV: test
+      DB_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      DB_USER: ${{ vars.POSTGRES_USER }}
+      HACKATON_DATABASE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      TEST_DATABASE_NAME: ${{ vars.POSTGRES_DB }}
+      SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd='pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq-dev libvips
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: backend
+          bundler-cache: true
+      - name: Prepare database, seed and load Rails
+        run: bin/rails db:prepare db:seed zeitwerk:check
+
+  frontend:
+    name: Frontend lint and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      VITE_API_URL: https://api.example.com
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Build
+        run: pnpm build
+
+  deploy:
+    needs: [ruby_checks, backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: prod
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      SSH_USER: ${{ vars.SSH_USER }}
+      SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+      API_HOST: ${{ vars.API_HOST }}
+      FRONTEND_HOST: ${{ vars.FRONTEND_HOST }}
+      DB_NAME: ${{ vars.DB_NAME }}
+      DB_USER: ${{ vars.DB_USER }}
+      RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+      MAX_BOT_TOKEN: ${{ secrets.MAX_BOT_TOKEN }}
+      MAX_WEBHOOK_SECRET: ${{ secrets.MAX_WEBHOOK_SECRET }}
+      HACKATON_DATABASE_PASSWORD: ${{ secrets.HACKATON_DATABASE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: backend
+          bundler-cache: true
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ vars.SSH_KNOWN_HOSTS }}
+        run: |
+          : "${SSH_PRIVATE_KEY:?Set SSH_PRIVATE_KEY}"
+          : "${SSH_KNOWN_HOSTS:?Set SSH_KNOWN_HOSTS}"
+          install -m 700 -d ~/.ssh
+          umask 077
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' 'Host *' '  StrictHostKeyChecking yes' '  IdentitiesOnly yes' > ~/.ssh/config
+      - name: Deploy Rails
+        run: bin/kamal deploy -c config/deploy.backend.yml
+      - name: Seed database
+        run: bin/kamal app exec --reuse "bin/rails db:seed"
+      - name: Deploy frontend
+        run: bin/kamal deploy -c config/deploy.frontend.yml
