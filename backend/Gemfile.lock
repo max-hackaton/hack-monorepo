@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/max-hackaton/max_api_client.git
-  revision: d55fb2ce254f956130748d770c35333bdd507e1d
+  revision: a7a06dd086979ba027a325051ecae6a3c4a1cbc5
   specs:
     max_api_client (0.1.3)
 
